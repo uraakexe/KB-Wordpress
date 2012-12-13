@@ -29,6 +29,16 @@ function kb_remove_admin_menus() {
 	remove_menu_page('edit.php');
 }
 
+function webroot(){
+	echo get_stylesheet_directory_uri();
+}
+
+function pr($in){
+	echo '<pre>';
+	print_r($in);
+	echo '</pre>';
+}
+
 
 remove_action( 'wp_head', 'feed_links_extra', 3 ); // Display the links to the extra feeds such as category feeds
 remove_action( 'wp_head', 'feed_links', 2 ); // Display the links to the general feeds: Post and Comment Feed
