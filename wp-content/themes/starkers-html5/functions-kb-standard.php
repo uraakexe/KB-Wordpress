@@ -39,6 +39,11 @@ function pr($in){
 	echo '</pre>';
 }
 
+// remove version info from head and feeds
+function kb_complete_version_removal() {
+	return '';
+}
+add_filter('the_generator', 'kb_complete_version_removal');
 
 remove_action( 'wp_head', 'feed_links_extra', 3 ); // Display the links to the extra feeds such as category feeds
 remove_action( 'wp_head', 'feed_links', 2 ); // Display the links to the general feeds: Post and Comment Feed
