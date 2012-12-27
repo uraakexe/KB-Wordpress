@@ -1,5 +1,5 @@
 <?php
-define('WP_CACHE_KEY_SALT', md5(DB_NAME . __FILE__));
+define('WP_CACHE_KEY_SALT', md5(DB_USER.'_'.DB_NAME . __FILE__));
 //define('FORCE_SSL_ADMIN', true);
 $memcached_servers = array(
 'default' => array(
