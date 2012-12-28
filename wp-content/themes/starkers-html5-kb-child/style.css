@@ -5,5 +5,6 @@ Author: Kieran Barnes
 Author URI: http://bloke.org
 
 */
-
-@import url("../starkers-html5/style.css");
+@import url("../starkers-html5/css/reset.css");
+@import url("../starkers-html5/css/unreset.css");
+@import url("../starkers-html5/css/layout.css");
