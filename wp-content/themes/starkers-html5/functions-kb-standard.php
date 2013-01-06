@@ -39,6 +39,10 @@ function pr($in){
 	echo '</pre>';
 }
 
+function js_log($in){
+	echo "<script type=\"text/javascript\"> console.log('".$in."');</script>";
+}
+
 // remove version info from head and feeds
 function kb_complete_version_removal() {
 	return '';
