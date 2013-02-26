@@ -42,15 +42,33 @@ inserts into our custom field instead of to the destinations hard-coded by WP.
 In this function, I restore the the original WP function.
 ------------------------------------------------------------------------------*/
 function cctm_upload(fieldname, upload_type) {
+
+	cctm_fieldname = fieldname; // pass this to global scope
+	append_or_replace = upload_type; // pass this to global scope
+
 	// Override the send_to_editor() function from wp-admin/js/media-upload.js
 	window.send_to_editor = function(html) {
 	
 		// alert(html); // see what on earth WP is sending back to the post...
 		var attachment_guid; 
 		
-		var matches = html.match(/href=['|"](.*?)['|"]/);
+		var matches;
+		if (html.indexOf("src") != -1){
+			matches = html.match(/src=['|"](.*?)['|"]/);
+		}
+		else if (html.indexOf("href")) {
+			matches = html.match(/href=['|"](.*?)['|"]/);
+		}
+
 		if (matches != null) {
+    		// See http://code.google.com/p/wordpress-custom-content-type-manager/issues/detail?id=404
+    		// could be something like http://mysite.com/?attachment_id=412 or http://mysite.com/wp-content/uploads/2012/08/my-image.jpg
+    		// Or alt. size: http://mysite.com/wp-content/uploads/2012/06/IMG_0448-150x150.jpg
     		attachment_guid = matches[1];
+    		
+			//var more_match = matches.attachment_guid(/\d{2,3}x\d{2,3}.*{3,4}$/);
+			
+			//console.log(more_match);
     	}
     	
 		var data = {
@@ -59,17 +77,23 @@ function cctm_upload(fieldname, upload_type) {
 		        "guid": attachment_guid,
 		        "get_selected_posts_nonce" : cctm.ajax_nonce
 		    };
-	
+
 		jQuery.post(
 		    cctm.ajax_url,
 		    data,
 		    function( response ) {
-		    	// Write the response to the div
-		    	if (append_or_replace == 'append') {
-			    	jQuery('#cctm_instance_wrapper_'+cctm_fieldname).append(response);
+		    	// alert if no response (i.e. if no valid relation found)
+		    	if (response == '') {
+		    		alert('The CCTM plugin was unable to determine the ID of the related item. Avoid using alternate sizes of images.');
 		    	}
-		    	else {
-		    		jQuery('#cctm_instance_wrapper_'+cctm_fieldname).html(response);
+		    	else {		    	
+			    	// Write the response to the div
+			    	if (append_or_replace == 'append') {
+				    	jQuery('#cctm_instance_wrapper_'+cctm_fieldname).append(response);
+			    	}
+			    	else {
+			    		jQuery('#cctm_instance_wrapper_'+cctm_fieldname).html(response);
+			    	}
 		    	}
 				
 		    }
@@ -123,8 +147,6 @@ function cctm_upload(fieldname, upload_type) {
 		// end of function restoration
 	}
 
-	cctm_fieldname = fieldname; // pass this to global scope
-	append_or_replace = upload_type; // pass this to global scope
 	
 	tb_show('', 'media-upload.php?post_id=0&amp;type=file&amp;TB_iframe=true');
 	return false;
@@ -194,7 +216,7 @@ yet have a fieldname.
 ------------------------------------------------------------------------------*/
 function search_form_display(fieldname,fieldtype) {
 	var search_parameters = jQuery('#search_parameters').val();
-	//alert(search_parameters);
+	console.log(search_parameters);
 	var data = {
 	        "action" : 'get_search_form',
 	        "fieldname" : fieldname,

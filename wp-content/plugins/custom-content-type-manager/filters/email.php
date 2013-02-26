@@ -12,14 +12,28 @@ class CCTM_email extends CCTM_OutputFilter {
 	 * Apply the filter.
 	 *
 	 * @param 	mixed 	input
-	 * @param	mixed	optional arguments
-	 * @return mixed
+	 * @param	null	no options
+	 * @return mixed matches input
 	 */
 	public function filter($input, $options=null) {
-		
-		$output = '';
-		for ($i = 0; $i < strlen($input); $i++) { 
-			$output .= '&#'.ord($input[$i]).';'; 
+		$input = $this->to_array($input);
+		if ($this->is_array_input) {
+			foreach ($input as &$item) {
+				$new_item = '';
+				for ($i = 0; $i < strlen($item); $i++) { 
+					$new_item .= '&#'.ord($item[$i]).';'; 
+				}
+				$item = $new_item;
+			}
+			// a raw array is more flexible than a canned filter...
+			// return CCTM::filter($input, 'formatted_list', $options);
+			return $input; 
+		}
+		else {
+			$output = '';
+			for ($i = 0; $i < strlen($input[0]); $i++) { 
+				$output .= '&#'.ord($input[0][$i]).';'; // why is this an array? ord is weird.
+			}
 		}
 		return $output;
 	}
@@ -38,7 +52,7 @@ class CCTM_email extends CCTM_OutputFilter {
 	 *
 	 * @return string 	a code sample 
 	 */
-	public function get_example($fieldname='my_field',$fieldtype) {
+	public function get_example($fieldname='my_field',$fieldtype,$is_repeatable=false) {
 		return "<?php print_custom_field('$fieldname:email'); ?>";
 	}
 

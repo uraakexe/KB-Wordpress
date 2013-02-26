@@ -26,6 +26,9 @@ class CCTM_relation extends CCTM_FormElement
 		// 'type' => '', // auto-populated: the name of the class, minus the CCTM_ prefix.
 	);
 
+
+	//------------------------------------------------------------------------------
+	//! Public Functions
 	//------------------------------------------------------------------------------
 	/**
 	 * Thickbox support
@@ -210,12 +213,12 @@ class CCTM_relation extends CCTM_FormElement
 				$hash['post_id']    	= (int) $v;
 				$hash['thumbnail_url']	= CCTM::get_thumbnail($hash['post_id']);
 
-				// Look up all the data on that foriegn key
+				// Look up all the data on that foreign key
 				// We gotta watch out: what if the related post has custom fields like "description" or 
 				// anything that would conflict with the definition?
 				$post = $Q->get_post($hash['post_id']);
 				if (empty($post)) {
-					$this->content = '<div class="cctm_error"><p>'.sprintf(__('Post %s not found.', CCTM_TXTDOMAIN), $v).'</p></div>';
+					$this->content .= '<div class="cctm_error"><p>'.sprintf(__('Post %s not found.', CCTM_TXTDOMAIN), $v).'</p></div>';
 				}
 				else {
 					foreach($post as $k => $v) {
@@ -335,11 +338,13 @@ class CCTM_relation extends CCTM_FormElement
 			 	</div>';
 
 		// Set Search Parameters
-		$search_parameters_str = CCTM::get_value($def, 'search_parameters');
-		parse_str($search_parameters_str, $args);
-		$Q = new GetPostsQuery($args);
-		$search_parameters_visible = $Q->get_args();
+		$seach_parameters_str = '';
+		if (isset($def['search_parameters'])) {
+			$search_parameters_str = $def['search_parameters'];
+		}
+		$search_parameters_visible = $this->_get_search_parameters_visible($seach_parameters_str);
 		
+
 		$out .= '
 			<div class="cctm_element_wrapper" id="search_parameters_wrapper">
 				<label for="name" class="cctm_label cctm_text_label" id="search_parameters_label">'
@@ -352,7 +357,7 @@ class CCTM_relation extends CCTM_FormElement
 				<span id="search_parameters_visible">'.
 				$search_parameters_visible
 				.'</span>
-				<input type="hidden" id="search_parameters" name="search_parameters" value="'.CCTM::get_value($def, 'search_parameters').'" />
+				<input type="hidden" id="search_parameters" name="search_parameters" value="'.$search_parameters_str.'" />
 				<br/>
 			</div>';
 			
@@ -368,6 +373,13 @@ class CCTM_relation extends CCTM_FormElement
 		return $out;
 	}
 
+    //------------------------------------------------------------------------------
+    /**
+     * Options here are any search criteria
+     */
+    public function get_options_desc() {
+        return $this->_get_search_parameters_visible($this->props['search_parameters']);
+    }
 
 }
 

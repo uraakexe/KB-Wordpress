@@ -1,28 +1,16 @@
-<?php
-/*
-How to save status?
-http://stackoverflow.com/questions/5578405/wordpress-cannot-save-metaboxes-position-in-plugin
-Probably gotta do an on-click event, get the ids of the various boxes, then store their classes
-in a hidden field.
-*/
-?>
 <script type="text/javascript">
-jQuery(document).ready( function() {
-   // jQuery('.postbox h3').prepend('<a class="togbox">+</a> ');
-    jQuery('.postbox h3').click( function() {
-        jQuery(jQuery(this).parent().get(0)).toggleClass('closed');
-    });
-    jQuery('.handlediv').click( function() {
-        jQuery(jQuery(this).parent().get(0)).toggleClass('closed');
-    });
-});
+	function set_continue_editing() {
+		jQuery('#continue_editing').val(1);
+		return true;
+	}
 </script>
 
 <div class="metabox-holder">
 
 <form id="custom_post_type_manager_basic_form" method="post" action="">
 
-
+	<input type="hidden" name="continue_editing" id="continue_editing" value="0" />
+	
 	<table class="custom_field_info">
 		<tr>
 			<td colspan="2">
@@ -41,6 +29,7 @@ jQuery(document).ready( function() {
 			</td>
 		</tr>
 	</table>
+	<br/>
 	<?php wp_nonce_field($data['action_name'], $data['nonce_name']); ?>
 	
 	<?php print $data['fields']; ?>
@@ -57,6 +46,8 @@ jQuery(document).ready( function() {
 		
 	<br />
 	<input type="submit" class="button-primary" value="<?php _e('Save', CCTM_TXTDOMAIN ); ?>" />
+	
+	<input type="submit" class="button" onclick="javascript:set_continue_editing();" value="<?php _e('Save and Continue Editing', CCTM_TXTDOMAIN ); ?>" />
 
 	<a href="<?php print get_admin_url(false, 'admin.php'); ?>?page=cctm_fields&a=list_custom_field_types" title="<?php _e('Cancel'); ?>" class="button"><?php _e('Cancel'); ?></a>
 </form>

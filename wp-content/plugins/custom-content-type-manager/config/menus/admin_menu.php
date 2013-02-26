@@ -53,6 +53,15 @@ add_submenu_page(
 	'CCTM::page_main_controller'	// callback function
 );
 
+add_submenu_page(
+	'cctm',         // parent slug (menu-slug from add_menu_page call)
+	__('CCTM Clear Cache', CCTM_TXTDOMAIN),   // page title
+	__('Clear Cache', CCTM_TXTDOMAIN),    // menu title
+	$capability,					// capability
+	'cctm_cache',					// menu_slug
+	'CCTM::page_main_controller'	// callback function
+);
+
 // Add Custom Fields links to each post type
 if (self::get_setting('show_custom_fields_menu')) {
 	foreach ($active_post_types as $post_type) {
@@ -88,5 +97,35 @@ if (self::get_setting('show_settings_menu')) {
 		);
 	}
 }
+
+// Remove any menus that the user has selected to hide under the Global Settings
+global $menu;
+
+$remove_me = array();
+if(self::get_setting('hide_posts')) {
+	$remove_me[] = __('Posts');
+}
+if(self::get_setting('hide_pages')) {
+	$remove_me[] = __('Pages');
+}
+if(self::get_setting('hide_links')) {
+	$remove_me[] = __('Links');
+}
+if(self::get_setting('hide_comments')) {
+	$remove_me[] = __('Comments');
+}
+if (!empty($remove_me)) {
+	foreach ($menu as $k => $v) {
+		foreach ($remove_me as $menu_item) {
+			// There is no unique id (*facepalm*), and the 0th position may include html <spans> (*facepalm again*)
+			if (!strncmp($v[0], $menu_item, strlen($menu_item))) {
+				unset($menu[$k]);
+				break; // on to the next
+			}		
+		}
+	}
+}
+
+
 
 /*EOF*/

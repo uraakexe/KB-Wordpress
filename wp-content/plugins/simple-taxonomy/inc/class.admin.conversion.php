@@ -4,25 +4,23 @@ class SimpleTaxonomy_Admin_Conversion{
 	 * Constructor
 	 *
 	 */
-	function __construct() {
-		global $messages;
-		
-		// Add message for conversion
-		$messages[99] = __('Item(s) converted on another taxonomy with success.', 'simple-taxonomy');
-		
+	public function __construct() {
 		// Add action on edit tags page
-		add_filter( 'admin_footer', array(&$this, 'addActions') );
-		add_action( 'admin_init', array(&$this, 'listenConversion' ) );
+		add_action( 'admin_init', array(__CLASS__, 'admin_init' ) );
+		add_filter( 'admin_footer', array(__CLASS__, 'admin_footer') );
 	}
 	
 	/**
 	 * Listen POST datas for make bulk terms conversion to new taxonomy
 	 */
-	function listenConversion() {
-		global $pagenow, $wpdb, $taxnow;
+	public static function admin_init() {
+		global $pagenow, $wpdb, $taxnow, $messages, $post_type;
 		
 		if ( $pagenow != 'edit-tags.php' ) 
 			return false;
+		
+		// Add message for conversion
+		$messages[99] = __('Item(s) converted on another taxonomy with success.', 'simple-taxonomy');
 		
 		if ( isset($_POST['taxonomy']) && isset($_POST['action']) && substr($_POST['action'], 0, strlen('convert_taxo')) == 'convert_taxo' ) {
 			check_admin_referer( 'bulk-tags' );
@@ -91,8 +89,9 @@ class SimpleTaxonomy_Admin_Conversion{
 			}
 			
 			$location = 'edit-tags.php?taxonomy=' . $taxnow;
-			if ( 'post' != $post_type )
+			if ( isset($post_type) && 'post' != $post_type )
 				$location .= '&post_type=' . $post_type;
+			
 			if ( $referer = wp_get_referer() ) {
 				if ( false !== strpos( $referer, 'edit-tags.php' ) )
 					$location = $referer;
@@ -107,7 +106,7 @@ class SimpleTaxonomy_Admin_Conversion{
 	/**
 	 * Add JS on footer WP Admin for add option in select bulk action list
 	 */
-	function addActions() {
+	public static function admin_footer() {
 		global $pagenow;
 		
 		if ( $pagenow == 'edit-tags.php' ) {
@@ -124,4 +123,3 @@ class SimpleTaxonomy_Admin_Conversion{
 		}
 	}
 }
-?>

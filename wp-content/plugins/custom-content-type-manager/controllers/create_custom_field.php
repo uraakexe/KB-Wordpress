@@ -10,7 +10,7 @@ $field_type is set in the $_GET array
 // Page variables
 $data = array();
 $data['page_title'] = __('Create Custom Field', CCTM_TXTDOMAIN);
-$data['help'] = 'http://code.google.com/p/wordpress-custom-content-type-manager/wiki/SupportedCustomFields';
+$data['help'] = 'http://code.google.com/p/wordpress-custom-content-type-manager/wiki/CustomFieldDefinitions';
 $data['msg'] = '';
 $data['menu'] = sprintf('<a href="'.get_admin_url(false, 'admin.php').'?page=cctm_fields&a=list_custom_field_types" title="%s" class="button">%s</a>', __('Cancel'), __('Cancel'));
 $data['action_name']  = 'custom_content_type_mgr_create_new_custom_field';
@@ -19,9 +19,9 @@ $data['change_field_type'] = '<br/>';
 
 $field_data = array(); // Data object we will save
 
-// Fail if there's a problem
-if (!self::include_form_element_class($field_type)) {
-	$data['msg'] = CCTM::format_errors();
+// Fail if there's a that field type does not exist
+if (!$FieldObj = CCTM::load_object($field_type,'fields')) {
+	$data['msg'] = '<div class="error"><p>'.__('Invalid field type.',CCTM_TXTDOMAIN).'</p></div>';
 	$data['content'] = '';
 	print CCTM::load_view('templates/default.php', $data);
 	return;
@@ -49,11 +49,10 @@ if ( !empty($_POST) && check_admin_referer($data['action_name'], $data['nonce_na
 	}
 	unset($_POST['post_types']);
 
-
 	// Validate and sanitize any submitted data
 	$field_data   = $FieldObj->save_definition_filter($_POST, $post_type);
 	$FieldObj->set_props($field_data);  // This is how we repopulate data in the create forms
-
+	
 	// Any errors?
 	if ( !empty($FieldObj->errors) ) {
 		$data['msg'] = $FieldObj->format_errors();
@@ -123,7 +122,6 @@ if ( !empty($_POST) && check_admin_referer($data['action_name'], $data['nonce_na
 		// We redirect to different places if we have auto-associated the field to a post_type
 		if (!empty($post_type)) {
 			self::redirect('?page=cctm&a=list_pt_associations&pt='.$post_type);
-			//include(CCTM_PATH.'/controllers/list_pt_associations.php');
 		}
 		else {
 			include CCTM_PATH.'/controllers/list_custom_fields.php';
@@ -140,7 +138,7 @@ $data['url'] = $FieldObj->get_url();
 $data['name'] = $FieldObj->get_name();
 $data['description'] = htmlspecialchars($FieldObj->get_description());
 
-$data['associations'] = ''; // TODO
+$data['associations'] = '';
 
 
 //------------------------------------------------------------------------------
@@ -155,7 +153,7 @@ foreach ($displayable_types as $post_type) {
 		$def = self::$data['post_type_defs'][$post_type];
 	}
 
-	$icon = '';
+	$icon = '<img src="'. CCTM_URL . '/images/icons/post.png' . '" width="15" height="15"/>';
 	$target_url = sprintf(
 		'<a href="?page=cctm&a=list_pt_associations&pt=%s" title="%s">%s</a>'
 		, $post_type
@@ -211,6 +209,12 @@ foreach ($displayable_types as $post_type) {
 		&& in_array($field_name, self::$data['post_type_defs'][$post_type]['custom_fields'])) {
 		$is_checked = ' checked="checked"';
 	}
+	
+	$post_type_label = '<span style="color:gray;">'.$post_type.'</span>';
+	if (isset(self::$data['post_type_defs'][$post_type]['is_active']) && self::$data['post_type_defs'][$post_type]['is_active']) {
+		$post_type_label = $post_type; // keep it black
+	}
+	
 	$data['associations'] .= sprintf('
 		<tr>
 			<td><input type="checkbox" name="post_types[]" id="%s" value="%s" %s/></td>
@@ -224,7 +228,7 @@ foreach ($displayable_types as $post_type) {
 		, $is_checked
 		, $icon
 		, $post_type
-		, $post_type
+		, $post_type_label
 		, $def['description']
 		, $target_url
 	);

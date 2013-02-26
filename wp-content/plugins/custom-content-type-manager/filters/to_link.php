@@ -2,8 +2,7 @@
 /**
  * @package CCTM_OutputFilter
  * 
- * Obscures a string (e.g. an to_link address) to make it more difficult for it to 
- * be harvested by bots.
+ * Take a numerical post id and converts it to a full anchor tag.
  */
 
 class CCTM_to_link extends CCTM_OutputFilter {
@@ -16,21 +15,61 @@ class CCTM_to_link extends CCTM_OutputFilter {
 	 * @return mixed
 	 */
 	public function filter($input, $options=null) {
-		
-		$inputs = $this->to_array($input);
+
 		$output = '';
+		if (is_array($options)) {
+			$options = $options[0];
+		}		
+		$input = $this->to_array($input);
 		
-		foreach ($inputs as $input) {
-			if ($input) {
-				$post = get_post($input);
-				$link_text = $post->post_title;
-				if (!empty($options)) {
-					$link_text = $options;
-				}
-				$output .= sprintf('<a href="%s" title="%s">%s</a>', get_permalink($post->ID), $post->post_title, $link_text);
-			}
+		if (empty($input)) {
+			return '';
 		}
-		return $output;
+		
+		if ($this->is_array_input) {
+			foreach ($input as &$item) {
+				if ($item) {
+					//$post = get_post($item);
+					if (!is_numeric($item)) {
+						$item = sprintf(__('Invalid input. %s operates on post IDs only.', CCTM_TXTDOMAIN), 'to_link');
+						continue;
+					}
+					$post = get_post_complete($item);
+					if (!is_array($post)) {
+						$item = __('Referenced post not found.', CCTM_TXTDOMAIN);
+						continue;
+					}
+					$link_text = $post['post_title'];
+					if (!empty($options)) {
+						if (is_array($options) && isset($options[0])) {
+							$link_text = $options[0];
+						}
+						else {
+							$link_text = $options;
+						}				
+					}
+					$item = sprintf('<a href="%s" title="%s">%s</a>', get_permalink($post['ID']), $post['post_title'], $link_text);
+				}
+			}
+			return $input;
+		}
+		else {
+			if (!is_numeric($input[0])) {
+				return sprintf(__('Invalid input. %s operates on post IDs only.', CCTM_TXTDOMAIN),'to_link');
+			}		
+			$post = get_post_complete($input[0]);
+			if (!is_array($post)) {
+				return _e('Referenced post not found.', CCTM_TXTDOMAIN);
+			}
+			if ($options) {
+				$link_text = $options;
+			}
+			else {
+				$link_text = $post['post_title'];
+			}		
+			return sprintf('<a href="%s" title="%s">%s</a>', get_permalink($post['ID']), $post['post_title'], $link_text);
+		}
+
 	}
 
 
@@ -38,7 +77,7 @@ class CCTM_to_link extends CCTM_OutputFilter {
 	 * @return string	a description of what the filter is and does.
 	 */
 	public function get_description() {
-		return __('The <em>to_link</em> filter takes a post ID and converts it into a full anchor tag. Be default, the post title will be used as the clickable text, but you can supply text to override this text.', CCTM_TXTDOMAIN);
+		return __('The <em>to_link</em> filter takes a post ID and converts it into a full anchor tag. Be default, the post title will be used as the clickable text, but you can supply your own text.', CCTM_TXTDOMAIN);
 	}
 
 
@@ -47,7 +86,7 @@ class CCTM_to_link extends CCTM_OutputFilter {
 	 *
 	 * @return string 	a code sample 
 	 */
-	public function get_example($fieldname='my_field',$fieldtype) {
+	public function get_example($fieldname='my_field',$fieldtype,$is_repeatable=false) {
 		return "<?php print_custom_field('$fieldname:to_link', 'Click here'); ?>";
 	}
 

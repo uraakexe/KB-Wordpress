@@ -12,6 +12,7 @@ $data['content']:		Main content block
 $active = array();
 $active['cctm']   = '';
 $active['cctm_fields'] = '';
+$active['cctm_metaboxes'] = '';
 $active['cctm_settings'] = '';
 $active['cctm_themes'] = '';
 $active['cctm_tools'] = '';

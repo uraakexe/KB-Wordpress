@@ -8,7 +8,9 @@
  *	2. It automatically creates/updates/deletes all custom fields in the postmeta
  *		table without the need to have to use the update_post_meta() and related functions.
  *	3. It does not check for user permissions. If you're running around in the PHP
- *		code, you have full run of the database. BEWARE!
+ *		code, you have full run of the database anyhow. BEWARE!  If implementing this
+ * 		in your own code/plugin, you should check the user permissions before executing functions
+ * 		in this class.
  *
  * @pacakge SummarizePosts
  */
@@ -45,6 +47,8 @@ class SP_Post {
 	 */
 	public $validators = array(
 		'ID' 				=> 'int',
+		'post_title'		=> 'text',
+		'post_content'		=> 'content',
 		'post_author'		=> 'int',
 		'post_date'			=> 'date',
 		'post_date_gmt'		=> 'date',
@@ -71,20 +75,14 @@ class SP_Post {
 	//! Private Functions
 	//------------------------------------------------------------------------------
 	/**
-	 * Tests whether a string is valid for use as a MySQL column name.  This isn't 
-	 * 100% accurate, but the postmeta virtual columns can be more flexible.
-	 * @param	string
-	 * @return	boolean
+	 * Content protection (allows html tags). See http://code.google.com/p/wordpress-custom-content-type-manager/issues/detail?id=454
+	 * @param	string	$val
+	 * @return	string
 	 */
-	private function _is_valid_column_name($str) {
-		if (preg_match('/[^a-zA-Z0-9\/\-\_]/', $str)) {
-			return false;
-		}
-		else {
-			return true;
-		}
+	private function _content($val) {
+		return wp_kses_post($val, array());
 	}
-	
+		
 	//------------------------------------------------------------------------------
 	/**
 	 * Convert input to datestamp
@@ -104,6 +102,24 @@ class SP_Post {
 		return (int) $val;
 	}
 	
+	//------------------------------------------------------------------------------
+	/**
+	 * Tests whether a string is valid for use as a MySQL column name.  This isn't 
+	 * 100% accurate because the postmeta virtual columns can be more flexible, but
+	 * generally, we want to enforce vanilla column names in case they end up being
+	 * used as object properties.
+	 * @param	string
+	 * @return	boolean
+	 */
+	private function _is_valid_column_name($str) {
+		if (preg_match('/[^a-zA-Z0-9\/\-\_]/', $str)) {
+			return false;
+		}
+		else {
+			return true;
+		}
+	}
+		
 	//------------------------------------------------------------------------------
 	/**
 	 * Used to override another filter.
@@ -130,6 +146,7 @@ class SP_Post {
 	 */
 	private function _sanitize($args) {
 		foreach ($args as $k => $v) {
+			// TODO: check for custom-field validators
 			if (isset($this->validators[$k])) {
 				$func_name = '_'.$this->validators[$k];
 				$args[$k] = $this->$func_name($v);
@@ -156,10 +173,17 @@ class SP_Post {
 	public function delete($post_id) {
 		global $wpdb;
 		
+		$post_id = (int) $post_id;
+		
 		// Delete the custom fields
 		$query = $wpdb->prepare("DELETE FROM {$wpdb->postmeta} WHERE post_id = %s"
 			, $post_id);
 		$wpdb->query($query);		
+
+		// Delete taxonomy refs
+		$query = $wpdb->prepare("DELETE FROM {$wpdb->term_relationships} WHERE object_id = %s",$post_id);
+		$wpdb->query($query);
+
 		
 		// Delete any revisions
 		$query = $wpdb->prepare("DELETE a FROM {$wpdb->posts} a INNER JOIN {$wpdb->posts} b ON a.post_parent=b.ID WHERE a.post_type='revision' AND b.ID=%s"
@@ -175,18 +199,35 @@ class SP_Post {
 	
 	//------------------------------------------------------------------------------
 	/**
-	 * Ties into GetPostsQuery, but offers a bit more flexibility.
+	 * Convenience function that ties into GetPostsQuery to retrieve a single post. 
+	 * You can provide a simple post_id to retrieve a single post, or you can provide
+	 * complex search criteria a la GetPostsQuery::get_posts(), but this function 
+	 * will only return a single result.
 	 *
-	 * @param	mixed	$args	integer ID, or valid search params for GetPostsQuery
+	 * @param	mixed	$args	any valid search params for GetPostsQuery, or integer post id (for retrieving 1 post)
+	 * @return	mixed -- a single associative array if an integer was supplied, or false on no results.
 	 */
 	public function get($args) {
 		$Q = new GetPostsQuery();
-		$posts = $Q->get_posts($args);
-		if (!empty($posts)) {
-			return $posts[0];
+		if (is_array($args)) {
+			$args['limit'] = 1; // for database efficiency
+			$posts = $Q->get_posts($args);
+			if (!empty($posts)) {
+				return $posts[0];
+			}
+			else {
+				return false;
+			}
 		}
 		else {
-			return false;
+			$post_id = (int) $args;
+			$post = $Q->get_post($post_id);
+			if (!empty($post)) {
+				return $post;
+			}
+			else {
+				return false;
+			}
 		}
 	}
 
@@ -281,7 +322,7 @@ class SP_Post {
 		if (isset($args['ID']) && $args['ID'] != 0) {
 			$post = get_post($args['ID'], ARRAY_A);
 			if (!empty($post)) {
-				return $this->update($args);
+				return $this->update($args,$args['ID']);
 			}
 		}
 		
@@ -292,13 +333,24 @@ class SP_Post {
 	//------------------------------------------------------------------------------
 	/**
 	 * @param	array	$args in column => value pairs
+	 * @param	integer	$post_id the post you want to update
 	 * @param	boolean	$overwrite (optional). If true, this will nuke any custom fields not included in $args.
+	 * @return 	mixed	integer $post_id on success, boolean false on fail
 	 */
-	public function update($args, $overwrite=false) {
+	public function update($args, $raw_post_id, $overwrite=false) {
 		
-		$post_id = '';
+		$post_id = (int) $raw_post_id;
 		global $wpdb;
 		
+		if (!$post_id) {
+			$this->errors[] = __('Update requires post ID.', CCTM_TXTDOMAIN);
+			return false;
+		}
+		if ($post_id != $raw_post_id) {
+			$this->errors[] = __('Invalid value for post ID. Cannot update post.', CCTM_TXTDOMAIN);
+			return false;	
+		}	
+	
 		$args = $this->_sanitize($args);
 
 		// Get the primary columns
@@ -311,14 +363,6 @@ class SP_Post {
 			else {
 				$postmeta_args[$k] = $v;	
 			}
-		}
-		
-		if (isset($args['ID']) && !empty($args['ID'])) {
-			$post_id = $args['ID'];
-		}
-		else {
-			$this->errors[] = 'Update requires the post ID';
-			return false;
 		}
 		
 		// Main fields

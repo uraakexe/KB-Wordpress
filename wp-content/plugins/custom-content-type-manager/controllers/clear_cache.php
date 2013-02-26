@@ -21,13 +21,17 @@ $upload_dir = wp_upload_dir();
 $cache_dir = $upload_dir['basedir'].'/'.CCTM::base_storage_dir .'/cache';
 
 
-// If properly submitted, Proceed with deleting the post type
+// If properly submitted, Proceed with deleting the cache
 if ( !empty($_POST) && check_admin_referer($data['action_name'], $data['nonce_name']) ) {
-	$error_flag = false;
+	$error_flag = false; // ??? when does this get set?
 
 	CCTM::delete_dir($cache_dir);
-	
-	// Delete the cache dir
+
+	// Clear the cached database components: TODO: dedicated function?
+	unset(CCTM::$data['cache']);
+	unset(CCTM::$data['warnings']);
+	update_option(self::db_key, self::$data);
+
 	if (!$error_flag) {
 
 		$msg = '<div class="updated"><p>'
@@ -40,7 +44,7 @@ if ( !empty($_POST) && check_admin_referer($data['action_name'], $data['nonce_na
 	}
 	else {
 		$msg = '<div class="error"><p>'
-			. __('Unable to clear the cache!  Please adjust the permissions on that directory or manually delete its contents.', CCTM_TXTDOMAIN)
+			. sprintf(__('Unable to clear the cache!  Please adjust the permissions on the %s directory or manually delete its contents.', CCTM_TXTDOMAIN), $cache_dir)
 			. '</p></div>';
 		$data['msg'] = $msg;
 	
@@ -50,6 +54,7 @@ if ( !empty($_POST) && check_admin_referer($data['action_name'], $data['nonce_na
 
 $data['content'] = '
 	<div>
+		<p>'.__('This clears out any cached directory scans and any cached formatting templates (.tpls).', CCTM_TXTDOMAIN).'</p>
 		<p>'.
 		 sprintf( __('Clearing the cache will delete all files and directories from the CCTM cache directory: %s.', CCTM_TXTDOMAIN), "<code>$cache_dir</code>")
 		.'</p>

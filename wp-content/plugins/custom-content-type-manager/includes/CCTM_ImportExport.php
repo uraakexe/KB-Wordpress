@@ -30,6 +30,7 @@ class CCTM_ImportExport {
 	 * Takes a definition file and activates it by copying it into the current 
 	 * CCTM::$data structure.
 	 *
+	 * @param	string	$filename name of definition file, not including 'wp-content/uploads/cctm/defs/'
 	 * @return boolean (true on success, false on fail)
 	 */
 	public static function activate_def($filename) {
@@ -318,9 +319,9 @@ class CCTM_ImportExport {
 	 * @return string
 	 */
 	public function get_subdir() {
-			$info = pathinfo(site_url());
-			if (isset($info['filename'])) {
-				return $info['filename'];
+			$info = parse_url(site_url());
+			if (isset($info['path'])) {
+				return $info['path'];
 			}
 			return '';
 	}
@@ -564,8 +565,13 @@ class CCTM_ImportExport {
 	 */
 	public static function make_img_path_rel($src) {
 		// If left-most character is '/', then chop it and the subdir off
-		if ('/' == substr($src, 0 ,1)) {			
-			return str_replace('/'.self::get_subdir(), '', $src);
+		if ('/' == substr($src, 0 ,1)) {
+			if(self::get_subdir()) {
+				return str_replace('/'.self::get_subdir(), '', $src);
+			}
+			else {
+				return substr($src, 1); // chop off leading slash
+			}
 		}
 		return str_replace(site_url(), '', $src);
 	}

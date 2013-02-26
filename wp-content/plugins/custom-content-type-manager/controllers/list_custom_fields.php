@@ -34,13 +34,11 @@ foreach ($defs as $field_name => $d) {
 		$d['label'] = $d['label'] . ' *'; // Asterix for req'd fields
 	}
 
-	$field_type_name = CCTM::classname_prefix.$d['type'];
-	if (!CCTM::include_form_element_class($d['type']) ) {
+	if (!$FieldObj = CCTM::load_object($d['type'],'fields') ) {
 		continue;
 	}
-	
-	$FieldObj = new $field_type_name();
-	
+
+	$FieldObj->set_props($d);
 	$d['icon'] 	= $FieldObj->get_icon();
 
 	if ( !CCTM::is_valid_img($d['icon']) ) {
@@ -60,8 +58,9 @@ foreach ($defs as $field_name => $d) {
 		, __('Edit', CCTM_TXTDOMAIN)
 	);
 	$d['duplicate_field_link'] = sprintf(
-		'<a href="?page=cctm_fields&a=duplicate_custom_field&field=%s&_wpnonce=%s" title="%s">%s</a>'
+		'<a href="?page=cctm_fields&a=duplicate_custom_field&field=%s&type=%s&_wpnonce=%s" title="%s">%s</a>'
 		, $d['name']
+		, $d['type']
 		, wp_create_nonce('cctm_edit_field')
 		, __('Duplicate this custom field', CCTM_TXTDOMAIN)
 		, __('Duplicate', CCTM_TXTDOMAIN)
@@ -73,16 +72,54 @@ foreach ($defs as $field_name => $d) {
 		, __('Delete this custom field', CCTM_TXTDOMAIN)
 		, __('Delete', CCTM_TXTDOMAIN)
 	);
+
+	// Show associated post-types
+	$d['post_types'] = array();
+
+	if (isset(CCTM::$data['post_type_defs']) && is_array(CCTM::$data['post_type_defs'])) {
+		foreach (CCTM::$data['post_type_defs'] as $pt => $pdef) {
+			if (isset($pdef['custom_fields']) && is_array($pdef['custom_fields']) 
+				&& in_array($field_name, $pdef['custom_fields'])) {
+				$d['post_types'][] = $pt;
+			}
+		}
+	}
+    
+    // Show options -- some different behavior for different types of fields. 
+    // TODO: add get_options() as a field to the FormElement class
+    // See http://code.google.com/p/wordpress-custom-content-type-manager/issues/detail?id=457
+    $d['options_desc'] = $FieldObj->get_options_desc();
 /*
-	$d['manage_associations_link'] = sprintf(
-		'<a href="?page=cctm_fields&a=list_field_associations&field=%s&_wpnonce=%s" title="%s">%s</a>'
-		, $d['name']
-		, wp_create_nonce('cctm_delete_field')
-		, __('Manage which content types this custom field is associated with.', CCTM_TXTDOMAIN)
-		, __('Manage Associations', CCTM_TXTDOMAIN)
-	);
+    if (isset($d['options']) && !empty($d['options'])) {
+      //  print_r($d['options']); exit;
+        if (is_array($d['options'])) {
+            $d['options'] = implode(', ',$d['options']);
+            if (strlen($d['options']) > 50) {
+                $d['options'] = substr($d['options'], 0, 50). '&hellip;';
+            }
+        }
+    }
+    elseif (isset($d['alternate_input']) && !empty($d['alternate_input'])) {
+        if (strlen($d['alternate_input']) > 50) {
+            $d['options'] = substr($d['alternate_input'], 0, 50). '&hellip;';
+        }
+        else {
+            $d['options'] = $d['alternate_input'];
+        }
+    }
+    else {
+        $d['options'] = '';
+    }	
 */
-	//$data['fields'] .= self::parse($tpl, $d);
+	
+	if (empty($d['post_types'])) {
+		$d['post_types'] = '<em>'.__('Unassigned', CCTM_TXTDOMAIN).'</em>';
+	}
+	else {
+		$d['post_types'] = implode(', ', $d['post_types'] );
+	}
+	
+
 	$data['fields'] .= CCTM::load_view('tr_custom_field.php',$d);
 }
 

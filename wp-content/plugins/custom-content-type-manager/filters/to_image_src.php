@@ -2,7 +2,7 @@
 /**
  * @package CCTM_OutputFilter
  * 
- * Converts input (usually a JSON encoded string) into an array
+ * Given a post_id (or an array of them), return the src for the image(s).
  */
 
 class CCTM_to_image_src extends CCTM_OutputFilter {
@@ -10,15 +10,44 @@ class CCTM_to_image_src extends CCTM_OutputFilter {
 	/**
 	 * Apply the filter.
 	 *
-	 * @param 	mixed 	input
+	 * @param 	mixed 	input (an image post ID), or an array of post IDs
 	 * @param	mixed	default image src if no image is available
-	 * @return mixed
+	 * @return mixed either the src of one image, or an array of src's
 	 */
 	public function filter($input, $options='') {
-		// we do this b/c default behavior is to return THIS post's guid if the $value is empty
-		if ($input) {
-			$post = get_post($input);
-			return $post->guid;
+		if (is_array($options)) {
+			$options = $options[0];
+		}
+
+		$input = $this->to_array($input);
+
+		if ($this->is_array_input) {
+			foreach($input as &$item) {
+				if (!is_numeric($item)) {
+					$item = sprintf(__('Invalid input. %s operates on post IDs only.', CCTM_TXTDOMAIN), 'to_image_src');
+					continue;
+				}
+
+				list($item, $h, $w) = wp_get_attachment_image_src($item, null, true);
+				if (empty($item)) {
+					$item = $options; // default image
+				}
+			}
+			
+			return $input;
+		}
+		elseif(isset($input[0])) {
+			if (!is_numeric($input[0])) {
+				return sprintf(__('Invalid input. %s operates on post IDs only.', CCTM_TXTDOMAIN), 'to_image_src');
+			}
+
+			list($src, $h, $w) = wp_get_attachment_image_src($input[0], null, true);
+			if (empty($src)) {
+				return $options;
+			}
+			else {
+				return $src;
+			}		
 		}
 		else {
 			return $options;
@@ -39,8 +68,17 @@ class CCTM_to_image_src extends CCTM_OutputFilter {
 	 *
 	 * @return string 	a code sample 
 	 */
-	public function get_example($fieldname='my_field',$fieldtype) {
-		return '<img src="<?php print_custom_field(\''.$fieldname.':to_image_src\'); ?>" />';
+	public function get_example($fieldname='my_field',$fieldtype,$is_repeatable=false) {
+		if ($is_repeatable) {
+			return '<?php $images = get_custom_field(\''.$fieldname.':to_image_src\'); 
+foreach ($images as $img) {
+	printf(\'<img src="%s"/>\', $img);
+}
+?>';
+		}
+		else {
+			return '<img src="<?php print_custom_field(\''.$fieldname.':to_image_src\'); ?>" />';
+		}	
 	}
 
 

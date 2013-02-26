@@ -1,54 +1,54 @@
 <?php
-/*
-Plugin Name: Search &amp; Replace
-Text Domain: searchandreplace
-Domain Path: /languages
-Plugin URI: http://bueltge.de/wp-suchen-und-ersetzen-de-plugin/114/
-Description: A simple search for find strings in your database and replace the string. 
-Author: Frank B&uuml;ltge
-Author URI: http://bueltge.de/
-Version: 2.6.3
-License: GPL
-Donate URI: http://bueltge.de/wunschliste/
-*/
-
 /**
-License:
-==============================================================================
-Copyright 2009 Frank Bueltge  (email : frank@bueltge.de)
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-Requirements:
-==============================================================================
-This plugin requires WordPress >= 2.7 and was tested with PHP Interpreter >= 5.3 and WP 3.3
-*/
+ * Plugin Name: Search &amp; Replace
+ * Text Domain: searchandreplace
+ * Domain Path: /languages
+ * Plugin URI:  http://bueltge.de/wp-suchen-und-ersetzen-de-plugin/114/
+ * Description: A simple search for find strings in your database and replace the string. 
+ * Author:      Frank B&uuml;ltge
+ * Author URI:  http://bueltge.de/
+ * Version:     2.6.5
+ * License:     GPLv3
+ * Donate URI:  http://bueltge.de/wunschliste/
+ * 
+ * 
+ * 
+ * License:
+ * ==============================================================================
+ * Copyright 2009 - 2012 Frank Bueltge  (email : frank@bueltge.de)
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * 
+ * Requirements:
+ * ==============================================================================
+ * This plugin requires WordPress >= 2.7 and was tested with PHP Interpreter >= 5.3 and WP 3.4
+ */
 
 //avoid direct calls to this file, because now WP core and framework has been used
-if ( !function_exists('add_action') ) {
+if ( ! function_exists('add_action') ) {
 	header('Status: 403 Forbidden');
 	header('HTTP/1.1 403 Forbidden');
 	exit();
 }
 
 // Pre-2.6 compatibility
-if ( !defined('WP_CONTENT_URL') )
+if ( ! defined('WP_CONTENT_URL') )
 	define( 'WP_CONTENT_URL', get_option('siteurl') . '/wp-content');
-if ( !defined('WP_CONTENT_DIR') )
+if ( ! defined('WP_CONTENT_DIR') )
 	define( 'WP_CONTENT_DIR', ABSPATH . 'wp-content' );
-if ( !defined( 'WP_PLUGIN_DIR' ) )
+if ( ! defined( 'WP_PLUGIN_DIR' ) )
 	define( 'WP_PLUGIN_DIR', WP_CONTENT_DIR . '/plugins' );
 	
 // plugin definitions
@@ -58,7 +58,7 @@ define( 'FB_SAR_TEXTDOMAIN', 'searchandreplace' );
 
 function searchandreplace_textdomain() {
 
-	load_plugin_textdomain( FB_SAR_TEXTDOMAIN, false, dirname(plugin_basename(__FILE__) ) . '/languages');
+	load_plugin_textdomain( FB_SAR_TEXTDOMAIN, false, dirname( plugin_basename(__FILE__) ) . '/languages');
 }
 
 
@@ -76,7 +76,7 @@ function searchandreplace_on_load() {
 
 function searchandreplace_filter_plugin_meta($links, $file) {
 	
-	if (empty($links))
+	if ( empty($links) )
 		return;
 	
 	/* create link */
@@ -96,19 +96,18 @@ function searchandreplace_filter_plugin_meta($links, $file) {
  */
 function searchandreplace_add_settings_page() {
 
-	if ( !current_user_can('manage_options') )
+	if ( ! current_user_can('manage_options') )
 		return;
 	
 	$pagehook = add_management_page( __( 'Search &amp; Replace', FB_SAR_TEXTDOMAIN ), __( 'Search &amp; Replace', FB_SAR_TEXTDOMAIN ), 'manage_options', FB_SAR_BASENAME, 'searchandreplace_page', '' );
 	add_action( 'load-plugins.php', 'searchandreplace_on_load' );
-	//wp_enqueue_script('jquery');
-	
 }
 
 /**
  * init on wordpress
  */
 function searchandreplace_init() {
+	
 	add_action('admin_init', 'searchandreplace_textdomain');
 	add_action('admin_menu', 'searchandreplace_add_settings_page');
 	add_action('admin_print_scripts', 'searchandreplace_add_js_head' );
@@ -396,6 +395,7 @@ function searchandreplace_doit(
 		$myecho .= searchandreplace_results('ID', 'users', $search_text);
 		$myecho .= searchandreplace_results('user_id', 'usermeta', $search_slug);
 		$myecho .= searchandreplace_results('post_author', 'posts', $search_slug);
+		$myecho .= searchandreplace_results('user_id', 'comments', $search_slug);
 		$myecho .= searchandreplace_results('link_owner', 'links', $search_slug);
 		$myecho .= "\n" . '</ul>' . "\n" . '</li>' . "\n";
 		
@@ -412,6 +412,11 @@ function searchandreplace_doit(
 		$query  = "UPDATE $wpdb->posts ";
 		$query .= "SET post_author = ";
 		$query .= "REPLACE(post_author, \"$search_slug\", \"$replace_slug\") ";
+		$wpdb->get_results($query);
+		
+		$query  = "UPDATE $wpdb->comments ";
+		$query .= "SET user_id = ";
+		$query .= "REPLACE(user_id, \"$search_slug\", \"$replace_slug\") ";
 		$wpdb->get_results($query);
 		
 		$query  = "UPDATE $wpdb->links ";
@@ -558,7 +563,7 @@ function searchandreplace_sall($search_text, $replace_text = FALSE) {
 		$sql = 'select count(*) from ' . $tables[$i]['Tables_in_' . $wpdb->dbname];
 		$res = mysql_query($sql);
 		
-		if (mysql_num_rows($res) > 0) {
+		if ( (int) mysql_num_rows($res) > 0) {
 			//@abstract taking the table data type information
 			$sql = 'desc ' . $tables[$i]['Tables_in_' . $wpdb->dbname]; 
 			$res = mysql_query($sql);
@@ -743,8 +748,12 @@ function searchandreplace_action() {
 				$myecho .= ' ... ' . __('and replace with', FB_SAR_TEXTDOMAIN) . ' <code>' . stripslashes( htmlentities2( $_POST['replace_text'] ) ) . '</code></p>';
 			$myecho .= '</div><br class="clear" />';
 			
-			if ( !isset($_POST['replace_text']) )
+			if ( ! isset( $_POST['replace_text'] ) )
 				$_POST['replace_text'] = NULL;
+			
+			if ( ! isset( $_POST['sall'] ) )
+				$_POST['sall'] = NULL;
+			
 			$error = searchandreplace_doit(
 				$_POST['search_text'],
 				$_POST['replace_text'],
@@ -782,14 +791,19 @@ function searchandreplace_action() {
 function searchandreplace_page() {
 	global $wpdb;
 	
-	if ( !isset($wpdb) )
+	if ( ! isset($wpdb) )
 		$wpdb = NULL;
 ?>
 	<div class="wrap" id="top">
 		<h2><?php _e('Search &amp; Replace', FB_SAR_TEXTDOMAIN); ?></h2>
 
 		<?php
-		if ( current_user_can('edit_plugins') ) {
+		if ( defined('DISALLOW_FILE_EDIT') && DISALLOW_FILE_EDIT )
+			$capability = 'manage_options';
+		else
+			$capability = 'edit_plugins';
+		
+		if ( current_user_can( $capability ) ) {
 			searchandreplace_action();
 		} else {
 			wp_die('<div class="error"><p>' . __('You do not have sufficient permissions to edit plugins for this blog.', FB_SAR_TEXTDOMAIN) . '</p></div>');
@@ -847,85 +861,85 @@ function searchandreplace_page() {
 							<tr class="alternate">
 								<th><label for="content_label"><?php _e('Content', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='content' id='content_label' /></td>
-								<td><label for="content_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>post_content</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_posts</code></label></td>
+								<td><label for="content_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>post_content</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_posts</code></label></td>
 							</tr>
 							<tr>
 								<th><label for="guid_label"><?php _e('GUID', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='guid' id='guid_label' /></td>
-								<td><label for="guid_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>guid</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_posts</code></label></td>
+								<td><label for="guid_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>guid</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_posts</code></label></td>
 							</tr>
 							<tr class="alternate">
 								<th><label for="title_label"><?php _e('Titles', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='title' id='title_label' /></td>
-								<td><label for="title_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>post_title</code>, <code>post_name</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_posts</code></label></td>
+								<td><label for="title_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>post_title</code>, <code>post_name</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_posts</code></label></td>
 							</tr>
 							<tr>
 								<th><label for="excerpt_label"><?php _e('Excerpts', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='excerpt' id='excerpt_label' /></td>
-								<td><label for="excerpt_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>post_excerpt</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_posts</code></label></td>
+								<td><label for="excerpt_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>post_excerpt</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_posts</code></label></td>
 							</tr>
 							<tr class="alternate">
 								<th><label for="meta_value_label"><?php _e('Meta Data', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='meta_value' id='meta_value_label' /></td>
-								<td><label for="meta_value_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>meta_value</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_postmeta</code></label></td>
+								<td><label for="meta_value_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>meta_value</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_postmeta</code></label></td>
 							</tr>
 							<tr>
 								<th><label for="comment_content_label"><?php _e('Comments content', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='comment_content' id='comment_content_label' /></td>
-								<td><label for="comment_content_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>comment_content</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_comments</code></label></td>
+								<td><label for="comment_content_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>comment_content</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_comments</code></label></td>
 							</tr>
 							<tr class="alternate">
 								<th><label for="comment_author_label"><?php _e('Comments author', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='comment_author' id='comment_author_label' /></td>
-								<td><label for="comment_author_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>comment_author</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_comments</code></label></td>
+								<td><label for="comment_author_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>comment_author</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_comments</code></label></td>
 							</tr>
 							<tr>
 								<th><label for="comment_author_email_label"><?php _e('Comments author e-mail', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='comment_author_email' id='comment_author_email_label' /></td>
-								<td><label for="comment_author_email_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>comment_author_email</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_comments</code></label></td>
+								<td><label for="comment_author_email_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>comment_author_email</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_comments</code></label></td>
 							</tr>
 							<tr class="alternate">
 								<th><label for="comment_author_url_label"><?php _e('Comments author URL', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='comment_author_url' id='comment_author_url_label' /></td>
-								<td><label for="comment_author_url_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>comment_author_url</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_comments</code></label></td>
+								<td><label for="comment_author_url_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>comment_author_url</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_comments</code></label></td>
 							</tr>
 							<tr>
 								<th><label for="comment_count_label"><?php _e('Comments-Counter', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='comment_count' id='comment_count_label' /></td>
-								<td><label for="comment_count_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>comment_count</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_posts</code></label></td>
+								<td><label for="comment_count_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>comment_count</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_posts</code></label></td>
 							</tr>
 							<tr class="alternate">
 								<th><label for="cat_description_label"><?php _e('Category description', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='cat_description' id='cat_description_label' /></td>
-								<td><label for="cat_description_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>description</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_term_taxonomy</code></label></td>
+								<td><label for="cat_description_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>description</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_term_taxonomy</code></label></td>
 							</tr>
 							<tr>
 								<th><label for="tag_label"><?php _e('Tags &amp; Categories', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='tag' id='tag_label' /></td>
-								<td><label for="tag_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>name</code> <?php _e('and', FB_SAR_TEXTDOMAIN); ?> <code>slug</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_terms</code></label></td>
+								<td><label for="tag_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>name</code> <?php _e('and', FB_SAR_TEXTDOMAIN); ?> <code>slug</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_terms</code></label></td>
 							</tr>
 							<tr class="alternate">
 								<th><label for="user_id_label"><?php _e('User-ID', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='user_id' id='user_id_label' /></td>
-								<td><label for="user_id_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>ID</code>, <code>user_id</code>, <code>post_author</code> <?php _e('and', FB_SAR_TEXTDOMAIN); ?> <code>link_owner</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?><code>_users</code>, <code>_usermeta</code>, <code>_posts</code> <?php _e('and', FB_SAR_TEXTDOMAIN); ?> <code>_links</code></label></td>
+								<td><label for="user_id_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>ID</code>, <code>user_id</code>, <code>post_author</code>, <code>user_id</code> <?php _e('and', FB_SAR_TEXTDOMAIN); ?> <code>link_owner</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?><code>_users</code>, <code>_usermeta</code>, <code>_posts</code>, <code>_comments</code> <?php _e('and', FB_SAR_TEXTDOMAIN); ?> <code>_links</code></label></td>
 							</tr>
 							<tr>
 								<th><label for="user_login_label"><?php _e('User-login', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='user_login' id='user_login_label' /></td>
-								<td><label for="user_login_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>user_login</code> <?php _e('and', FB_SAR_TEXTDOMAIN); ?> <code>user_nicename</code> table: <code>_users</code></label></td>
+								<td><label for="user_login_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>user_login</code> <?php _e('and', FB_SAR_TEXTDOMAIN); ?> <code>user_nicename</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_users</code></label></td>
 							</tr>
-							<?php if ($wpdb && mysql_num_rows(mysql_query("SHOW TABLES LIKE '" . $wpdb->prefix . 'terms'."'") ) == 1) { ?>
+							<?php if ($wpdb && @mysql_num_rows(mysql_query("SHOW TABLES LIKE '" . $wpdb->prefix . 'terms'."'") ) == 1) { ?>
 							<tr class="alternate">
 								<th><label for="id_label"><?php _e('ID', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='id' id='id_label' /></td>
 								<td><label for="id_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>ID</code>, <code>post_parent</code>, <code>post_id</code>, <code>object_id</code> <?php _e('and', FB_SAR_TEXTDOMAIN); ?> <code>comments</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_posts</code>, <code>_postmeta</code>, <code>_term_relationships</code> <?php _e('and', FB_SAR_TEXTDOMAIN); ?> <code>_comment_post_ID</code></label></td>
 							</tr>
 							<?php } ?>
-							<?php if ($wpdb && mysql_num_rows(mysql_query("SHOW TABLES LIKE '" . $wpdb->prefix . 'signups'."'") ) == 1) { ?>
+							<?php if ($wpdb && @mysql_num_rows(mysql_query("SHOW TABLES LIKE '" . $wpdb->prefix . 'signups'."'") ) == 1) { ?>
 							<tr class="alternate">
 								<th><label for="signups_label"><?php _e('Signups', FB_SAR_TEXTDOMAIN); ?></label></th>
 								<td colspan="2" style="text-align: center;"><input type='checkbox' name='signups' id='signups_label' /></td>
-								<td><label for="signups_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>user_login</code> <?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_signups</code></label></td>
+								<td><label for="signups_label"><?php _e('field:', FB_SAR_TEXTDOMAIN); ?> <code>user_login</code><br /><?php _e('table:', FB_SAR_TEXTDOMAIN); ?> <code>_signups</code></label></td>
 							</tr>
 							<?php } ?>
 							<tr>
@@ -959,8 +973,15 @@ function searchandreplace_page() {
 			<div class="postbox" >
 				<h3><?php _e('Information on the plugin', FB_SAR_TEXTDOMAIN) ?></h3>
 				<div class="inside">
+					<form action="https://www.paypal.com/cgi-bin/webscr" method="post" style="float: right;">
+						<input type="hidden" name="cmd" value="_s-xclick">
+						<input type="hidden" name="hosted_button_id" value="RHWH8VG798CSC">
+						<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+						<img alt="" border="0" src="https://www.paypalobjects.com/de_DE/i/scr/pixel.gif" width="1" height="1">
+					</form>
+					
 					<p><?php _e('&quot;Search and Replace&quot; originalplugin (en) created by <a href="http://thedeadone.net/">Mark Cunningham</a> and provided (comments) by durch <a href="http://www.gonahkar.com">Gonahkar</a>.<br />&quot;Search &amp; Replace&quot;, current version provided by <a href="http://bueltge.de">Frank Bueltge</a>.', FB_SAR_TEXTDOMAIN); ?></p>
-					<p><?php _e('Further information: Visit the <a href="http://bueltge.de/wp-suchen-und-ersetzen-de-plugin/114/">plugin homepage</a> for further information or to grab the latest version of this plugin.', FB_SAR_TEXTDOMAIN); ?><br />&copy; Copyright 2006 - <?php echo date("Y"); ?> <a href="http://bueltge.de">Frank B&uuml;ltge</a> | <?php _e('You want to thank me? Visit my <a href="http://bueltge.de/wunschliste">wishlist</a>.', FB_SAR_TEXTDOMAIN); ?></p>
+					<p><?php _e('Further information: Visit the <a href="http://bueltge.de/wp-suchen-und-ersetzen-de-plugin/114/">plugin homepage</a> for further information or to grab the latest version of this plugin.', FB_SAR_TEXTDOMAIN); ?><br />&copy; Copyright 2006 - <?php echo date("Y"); ?> <a href="http://bueltge.de">Frank B&uuml;ltge</a> | <?php _e('You want to thank me? Visit my <a href="http://bueltge.de/wunschliste">wishlist</a> or use the donate button.', FB_SAR_TEXTDOMAIN); ?></p>
 				</div>
 			</div>
 		</div>

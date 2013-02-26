@@ -37,6 +37,9 @@ class GetPostsQuery {
 
 	// Goes to true if orderby is set to 'random'
 	private $sort_by_random = false;
+	
+	// Goes to true if an 'orderby_custom' parameter is provided.  This nullifies any 'orderby' and 'order' parameters
+	private $orderby_custom_flag = false;
 
 	// Goes to true if the date_column is set to something not in wp_posts
 	private $custom_field_date_flag = false;
@@ -121,7 +124,8 @@ class GetPostsQuery {
 	public $defaults = array(
 		'limit'   => 0,
 		'offset'   => null,
-		'orderby'  => 'ID', // valid column (?) cannot be a metadata column
+		'orderby'  => 'ID', // valid column or valid custom field (i.e. a virtual column)
+		'orderby_custom' => null,
 		'order'   => 'DESC', // ASC or DESC
 		// include: comma-sparated string or array of IDs. Any posts you want to include. This shrinks the "pool" of resources available: all other search parameters will only search against the IDs listed, so this paramter is probably best suited to be used by itself alone. If you want to always return a list of IDs in addition to results returned by other search parameters, use the "append" parameter instead.
 		'include'  => '', // see above: usually this parameter is used by itself.
@@ -188,7 +192,6 @@ class GetPostsQuery {
 	// normalized.
 	private $custom_default_values = array();
 
-	public $cnt; // number of search results
 	public $SQL; // store the query here for debugging.
 	
 	public $SQL1; 	// initial query (primary): returns only post IDs
@@ -236,11 +239,6 @@ class GetPostsQuery {
 	 * @return mixed
 	 */
 	public function __get($var) {
-/*
-		if ($var == 'omit_post_type') {
-			die(print_r(debug_backtrace(), true));
-		}
-*/
 		if ( in_array($var, array_keys($this->args))) {
 			return $this->args[$var];
 		}
@@ -741,6 +739,7 @@ class GetPostsQuery {
 						break;
 					case '=':
 					case 'in':
+					case 'equals':
 					default:
 						$this->operators[$arg] = '=';
 				}
@@ -821,6 +820,10 @@ class GetPostsQuery {
 			else {
 				return $val;
 			}
+			break;
+		case 'orderby_custom':
+			$this->orderby_custom_flag = true;
+			return $val;
 			break;
 		// List of Integers
 		case 'include':
@@ -1098,7 +1101,8 @@ class GetPostsQuery {
 		}
 		
 		// Only add these if a user has searched on taxonomy criteria
-		if (isset($this->taxonomy) && !empty($this->taxonomy)) {
+		if (isset($this->taxonomy) && !empty($this->taxonomy)
+			&& (isset($this->taxonomy_term) || isset($this->taxonomy_slug)) ) {
 			$hash['taxonomy'] = $this->_sql_filter($wpdb->term_taxonomy, 'taxonomy', '=', $this->taxonomy);
 			$hash['taxonomy_term'] = $this->_sql_filter($wpdb->terms, 'name', 'IN', $this->taxonomy_term);
 			$hash['taxonomy_slug'] = $this->_sql_filter($wpdb->terms, 'slug', 'IN', $this->taxonomy_slug);
@@ -1144,6 +1148,13 @@ class GetPostsQuery {
 			$hash['orderby'] = $wpdb->posts.'.'.$this->orderby;
 			$hash['join_for_metasortcolumn'] = '';
 		}
+		// This is when the user supplies their own ORDER BY parameters for complex sorting.
+		// Note: right now, I can only think of doing complex sorting on the primary columns from wp_posts 
+		// and NOT using custom columns from wp_postmeta.
+		if ($this->orderby_custom_flag) {
+			$hash['orderby'] = $this->orderby_custom;
+			$hash['order'] = ''; // <-- blanks this out!			
+		}
 
 		$hash['limit'] = $this->_sql_limit();
 		$hash['offset'] = $this->_sql_offset();
@@ -1167,8 +1178,9 @@ class GetPostsQuery {
 		if (!$this->include_hidden_fields) {
 			$hash['hidden_fields'] = "WHERE {$wpdb->postmeta}.meta_key NOT LIKE '\_%'";
 		}
+		
+		$this->SQL1 = CCTM::parse($this->SQL1, $hash);
 
-		$this->SQL1 = self::parse($this->SQL1, $hash);
 		// Strip whitespace
 		$this->SQL1  = preg_replace('/\s\s+/', ' ', $this->SQL1 );
 
@@ -1234,9 +1246,14 @@ class GetPostsQuery {
 			$hash['join_for_metasortcolumn'] = '';
 			$hash['orderby'] = $wpdb->posts.'.'.$this->orderby;		
 		}
+
+		if ($this->orderby_custom_flag) {
+			$hash['orderby'] = $this->orderby_custom;
+			$hash['order'] = ''; // <-- blanks this out!			
+		}
 		
 		
-		$this->SQL2 = self::parse($query, $hash);
+		$this->SQL2 = CCTM::parse($query, $hash);
 		//die($this->SQL2);
 		return $this->SQL2;		
 
@@ -1295,7 +1312,7 @@ class GetPostsQuery {
 			$hash['hidden_fields'] = "AND {$wpdb->postmeta}.meta_key NOT LIKE '\_%'";
 		}
 		
-		$this->SQL3 = self::parse($query, $hash);
+		$this->SQL3 = CCTM::parse($query, $hash);
 	
 		return $this->SQL3;
 	}
@@ -1811,7 +1828,7 @@ class GetPostsQuery {
 	 * @param	array	same arguments accepted by get_posts()
 	 * @return integer
 	 */
-	public function count_posts($args) {
+	public function count_posts($args,$ignore_defaults=false) {
 		global $wpdb;
 		
 		if ($ignore_defaults) {
@@ -1820,7 +1837,7 @@ class GetPostsQuery {
 		
 		// Include no IDs = empty result set
 		if (isset($args['include']) && empty($args['include'])) {
-			return array(array());
+			return 0;
 		}
 		
 		foreach ($args as $k => $v) {
@@ -1999,7 +2016,8 @@ class GetPostsQuery {
 
 	//------------------------------------------------------------------------------
 	/**
-	 * Gets the # of rows found given the criteria
+	 * Gets the # of rows found given the criteria.  Must be run after get_posts 
+	 * has been run.
 	 * @return integer
 	 */
 	public function get_found_rows() {
@@ -2047,8 +2065,7 @@ class GetPostsQuery {
 
 	//------------------------------------------------------------------------------
 	/**
-	 * Retrieves a single post by its post ID. The output format here is dictated by
-	 * the set_output_type() function (ARRAY_A or OBJECT).  This function is a
+	 * Retrieves a single post by its post ID. This function is a
 	 * convenience function accessor to the get_posts() function.
 	 *
 	 * @param integer $id post ID of the post to be fetched
@@ -2082,7 +2099,7 @@ class GetPostsQuery {
 	public function get_posts($args=array(), $ignore_defaults=false) {
 	
 		global $wpdb;
-		
+
 		if ($ignore_defaults) {
 			$this->set_defaults(array(), true);
 		}
@@ -2125,17 +2142,16 @@ class GetPostsQuery {
 		}
 
 		if ( $this->paginate ) {
-			$this->found_rows = $this->_count_posts();			
-			include_once 'CCTM_Pagination.conf.php';
-			include_once 'CCTM_Pagination.php';
+			$this->found_rows = $this->_count_posts();
+			require_once 'CCTM_Pagination.php';
 			$this->P = new CCTM_Pagination();
 			$this->P->set_base_url( self::get_current_page_url() );
-			$this->P->set_offset($this->offset); //
-			$this->P->set_results_per_page($this->limit);  // You can optionally expose this to the user.
+			$this->P->set_offset($this->offset); 
+			$this->P->set_results_per_page($this->limit);
 			if (!empty($this->tpls)) {
 				$this->P->set_tpls($this->tpls);
 			}
-			$this->pagination_links = $this->P->paginate($this->found_rows); // 100 is the count of records
+			$this->pagination_links = $this->P->paginate($this->found_rows);
 		}
 		
 		$postdata = $wpdb->get_results( $this->_get_sql2($post_ids), ARRAY_A );
@@ -2160,7 +2176,6 @@ class GetPostsQuery {
 //			$r['post_content']		= do_shortcode(wpautop(__($r['post_content'])));
 			$r['post_content']		= __($r['post_content']);
 			$r['post_excerpt']		= __($r['post_excerpt']);
-			
 			
 		}
 
@@ -2218,33 +2233,6 @@ class GetPostsQuery {
 	 */
 	public function get_sql() {
 		return $this->SQL1;
-	}
-
-	//------------------------------------------------------------------------------
-	/**
-	 * SYNOPSIS: a simple parsing function for basic templating.
-	 * INPUT:
-	 * $tpl (str): a string containing [+placeholders+]
-	 * $hash (array): an associative array('key' => 'value');
-	 * OUTPUT
-	 * string; placeholders corresponding to the keys of the hash will be replaced
-	 * with the values and the string will be returned.
-	 *
-	 * @param string  $tpl
-	 * @param array   $hash associative array of placeholders => values
-	 * @return string
-	 */
-	public static function parse($tpl, $hash) {
-		foreach ($hash as $key => $value) {
-			if ( !is_array($value) ) {
-				$tpl = str_replace('[+'.$key.'+]', $value, $tpl);
-			}
-		}
-
-		// Remove any unparsed [+placeholders+]
-		$tpl = preg_replace('/\[\+(.*?)\+\]/', '', $tpl);
-
-		return $tpl;
 	}
 
 	//------------------------------------------------------------------------------
@@ -2333,8 +2321,9 @@ class GetPostsQuery {
 	
 	//------------------------------------------------------------------------------
 	/**
+	 * Passthru to pagination library:
 	 * Set tpls to be used for formatting of pagination links
-	 * @param	array
+	 * @param	array $tpls associative array
 	 */
 	public function set_tpls($tpls) {
 		$valid_tpls = array('firstTpl','lastTpl','prevTpl','nextTpl','currentPageTpl','pageTpl','outerTpl');

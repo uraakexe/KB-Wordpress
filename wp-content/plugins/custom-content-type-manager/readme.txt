@@ -1,21 +1,21 @@
 === Custom Content Type Manager ===
 Contributors: fireproofsocks
-Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=355ULXBFXYL8N
+Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=FABHDKPU7P6LN
 Tags: cms, content management, custom post types, custom content types, custom fields, images, image fields, ecommerce, modx
 Requires at least: 3.3.0
-Tested up to: 3.3.2
-Stable tag: 0.9.5.13
-Version: 0.9.5.13-pl
+Tested up to: 3.5.1
+Stable tag: 0.9.7
+Version: 0.9.7-dev
 
 Break out of your blog!  Create custom fields for dropdowns, images, and more!  This plugin gives Wordpress true CMS functionality.
 
 == Description ==
 
-http://www.youtube.com/watch?v=TKh4Z_Y8iJE
+http://www.youtube.com/watch?v=rbRHrdKwo5A
 
 The Custom Content Type Manager requires WordPress 3.3.  It allows users to create custom content types (also known as post types) and standardized custom fields for each, including dropdowns, checkboxes, and images. This gives WordPress CMS functionality: Break out of your Blog!
 
-With version 0.9.5, you can select multiple images, posts, or media items to be stored in a single field.  This plugin also lets you export and import those content definitions, making it easy to ensure a similar structure between multiple sites.
+You can select multiple images, posts, or media items to be stored in a single field making it easy for you to store a gallery of images or long lists of values.  This plugin also lets you export and import your content definitions, making it easy to ensure a similar structure between multiple sites.
 
 Check the site for a [full list of features](http://code.google.com/p/wordpress-custom-content-type-manager/wiki/Features).
 
@@ -36,7 +36,6 @@ This plugin uses the standard installation procedure: install the plugin's folde
 
 Here is a typical use-case verbosely for the record:
 
-1. If you are upgrading from version 0.8.7 or before, you must *completely* uninstall and remove the previous version! This will not delete any of your content, but you should take some notes about the exact names of your content types before doing this.  Sorry, I know it's a pain, but I had to correct for limitations in the data structure.  See [this Wiki page](http://code.google.com/p/wordpress-custom-content-type-manager/wiki/DeletePostType) for more information.
 1. Install this plugin using the traditional WordPress plugin installation, or upload this plugin's folder to the `/wp-content/plugins/` directory (ensure that the directory is named *custom-content-type-manager*).
 1. Activate the plugin through the 'Plugins' menu in the WordPress manager.
 1. Upon activation you can adjust the plugin settings by clicking the newly created "Custom Content Types" menu item, or click this plugin's "Settings" link on the Plugins page.
@@ -51,6 +50,8 @@ Here is a typical use-case verbosely for the record:
 1. Now try adding a new instance of your content type ("Movies" in this example). Click the link in the left-hand admin menu to add a movie.
 1. Your new "Movie" post will have the custom fields you defined.
 1. If you have added any media custom fields, be sure to upload some images using the WordPress "Media" menu in the left-hand menu.
+
+Please note: if you are upgrading from version 0.8.7 or before, you must *completely* uninstall and remove the previous version! This will not delete any of your content, but you should take some notes about the exact names of your content types before doing this.  Sorry, I know it's a pain, but I had to correct for limitations in the data structure.  See [this Wiki page](http://code.google.com/p/wordpress-custom-content-type-manager/wiki/DeletePostType) for more information.
 
 
 == Frequently Asked Questions ==
@@ -77,7 +78,62 @@ or by going to your wp-content/plugins directory and executing the following com
 
 	svn checkout http://plugins.svn.wordpress.org/custom-content-type-manager/trunk custom-content-type-manager 
 
-= 0.0.5.12 =
+= 0.9.7 = 
+
+* Support for custom metaboxes: you can now put your fields anywhere on the admin pages.
+* Added a pattern validator which supports simple patterns and full regular expressions via preg_match().
+* Added a Directory field type so you can easily list the contents of a directory.
+* Various bug fixes.
+
+= 0.9.6.7 = 
+
+* Fixed errors with more complex permissions: capabilities, capability_types
+
+= 0.9.6.5 = 
+
+* Increased dropdown functionality, including ability to issue MySQL queries, "bulk" importing, and sortable options.
+* Improved compatibility.
+
+= 0.9.6.4 = 
+
+* Incrementing version because changes were not picked up by the WordPress repo (?)
+
+= 0.9.6.2 =
+
+* Improvements to SP_Post
+* Reworking of the CCTM_Pagination library and documentation.
+* Various bugs fixed.
+
+= 0.9.6.1 =
+
+* Improved parser to handle output filters in placeholders.
+* Lots of general cleanup to consolidate similar functions.
+* Improved examples for sample templates.
+* Fixed bug in format string for summarize-posts shortcode.
+	
+= 0.9.6 =
+
+* Now ready to accept translations. Various minor fixes.  Unit testing added (woot).
+
+= 0.9.5.16 =	
+
+* Customizations for Right Now Widget added.
+	
+= 0.9.5.15 =
+
+* Versioning number bump.
+	
+= 0.9.5.14 =
+
+* Security vulnerability patched.
+* Complex sorting now allowed in GetPostsQuery via 'orderby_custom'
+* Various cleanups.
+
+= 0.9.5.13 =
+
+* Release to combat WordPress removing the plugin from their repository for licensing dispute.
+
+= 0.9.5.12 =
 
 * Lots of fixes to the request_filter, search_filter
 * Date fields now support times and datetimes!
@@ -347,6 +403,44 @@ And if you REALLY want some of these features implemented, you can hire me to co
 
 
 == Upgrade Notice ==
+
+= 0.9.7 = 
+
+* New functionality: metabox support, a new Directory custom field type, and a new Pattern validator. Various bug fixes as well.
+
+= 0.9.6.7 = 
+
+* Fix of permissions-related bug.  Anyone running 0.9.6.3 thru 0.9.6.6 should update to this version.
+
+= 0.9.6.5 =
+
+* Increased functionality for dropdown fields including MySQL queries and sortable options.
+
+= 0.9.6.4 =
+
+* Small fix due to WordPress repo.
+
+= 0.9.6.3 = 
+
+* Small fix for first time install.
+
+= 0.9.6.2 = 
+
+* Various patches and minor improvements.
+
+= 0.9.6.1 =
+
+* Improved parser for greater flexibility in your formatting strings.  Improved caching for better performance.
+
+= 0.9.6 =
+
+* Now ready for internationalization!  Various minor fixes. Unit testing added!
+
+
+= 0.9.5.14 =
+
+* Security vulnerability fixed.  All users should upgrade if possible, or follow the steps outlined here: http://code.google.com/p/wordpress-custom-content-type-manager/wiki/SecurityVulnerability
+
 
 = 0.9.5.11 =
 

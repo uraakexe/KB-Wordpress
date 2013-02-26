@@ -2,8 +2,7 @@
 /**
  * @package CCTM_OutputFilter
  * 
- * Obscures a string (e.g. an to_link_href address) to make it more difficult for it to 
- * be harvested by bots.
+ * Converts a numerical post-id to a full link href
  */
 
 class CCTM_to_link_href extends CCTM_OutputFilter {
@@ -11,18 +10,30 @@ class CCTM_to_link_href extends CCTM_OutputFilter {
 	/**
 	 * Apply the filter.
 	 *
-	 * @param 	mixed 	input
-	 * @param	mixed	optional arguments
-	 * @return mixed
+	 * @param 	mixed 	$input
+	 * @param	mixed	$options separator to use between multiple instances
+	 * @return string
 	 */
 	public function filter($input, $options='') {
-		// we do this b/c default behavior is to return THIS post's guid if the $value is empty
-		if ($input) {
-			$post = get_post($input);
-			return $post->guid;
+		if (empty($input)) {
+			return $options;
+		}
+		$input = $this->to_array($input);
+		if ($this->is_array_input) {
+			foreach($input as &$item) {
+				if (!is_numeric($item)) {
+					$item = sprintf(__('Invalid input. %s operates on post IDs only.', CCTM_TXTDOMAIN), 'to_link_href');
+					continue;
+				}
+				$item = get_permalink($item);
+			}
+			return $input;
 		}
 		else {
-			return $options;
+			if (!is_numeric($input[0])) {
+				return sprintf(__('Invalid input. %s operates on post IDs only.', CCTM_TXTDOMAIN),'to_link_href');
+			}
+			return get_permalink($input[0]);
 		}
 	}
 
@@ -40,8 +51,18 @@ class CCTM_to_link_href extends CCTM_OutputFilter {
 	 *
 	 * @return string 	a code sample 
 	 */
-	public function get_example($fieldname='my_field',$fieldtype) {
-		return '<a href="<?php print_custom_field(\''.$fieldname.':to_link_href\',\'http://yoursite.com/default/page/\');?>">Click here</a>';
+	public function get_example($fieldname='my_field',$fieldtype,$is_repeatable=false) {
+		if ($is_repeatable) {
+			return '<?php 
+$hrefs = get_custom_field(\''.$fieldname.':to_link_href\',\'http://yoursite.com/default/page/\');
+foreach($hrefs as $h) {
+	printf(\'<a href="%s">Click Here</a><br/>\', $h);
+}
+?>';
+		}
+		else {
+			return '<a href="<?php print_custom_field(\''.$fieldname.':to_link_href\',\'http://yoursite.com/default/page/\');?>">Click here</a>';
+		}	
 	}
 
 

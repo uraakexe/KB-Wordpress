@@ -12,13 +12,14 @@ class CCTM_number extends CCTM_Validator {
 		'allow_negative' => '',
 		'allow_decimals' => '',
 		'decimal_places' => '',
+		'decimal_separator' => '.',
 	);
 
 	/**
 	 * @return string	a description of what the validation rule is and does.
 	 */
 	public function get_description() {
-		return __('Ensure that the input is a number of the type you have configured.', CCTM_TXTDOMAIN);		
+		return __('Input must be a number, i.e. something that you could use in arithmetic.', CCTM_TXTDOMAIN);		
 	}
 
 
@@ -95,7 +96,7 @@ class CCTM_number extends CCTM_Validator {
 	 * @return string
 	 */
 	public function validate($input) {
-		
+	
 		// Gotta be a number before we'll even talk to you
 		if (!is_numeric($input)) {
 			$this->error_msg = sprintf(__('The %s field must be numeric.', CCTM_TXTDOMAIN), $this->get_subject());

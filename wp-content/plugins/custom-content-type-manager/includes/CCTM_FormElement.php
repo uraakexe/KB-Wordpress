@@ -146,6 +146,8 @@ abstract class CCTM_FormElement {
 		$this->props['name_prefix'] = self::post_name_prefix;
 		$this->props['add_to_post'] = __('Add to Post', CCTM_TXTDOMAIN);
 		$this->props['add_to_post_and_close'] = __('Add to Post and Close', CCTM_TXTDOMAIN);
+		$this->props['preview'] = __('Preview', CCTM_TXTDOMAIN);
+		$this->props['edit'] = __('Edit', CCTM_TXTDOMAIN);
 		
 		$this->props = array_merge($this->props, $this->immutable);
 
@@ -159,12 +161,13 @@ abstract class CCTM_FormElement {
 		$this->descriptions['description'] .= __('The following html tags are allowed:')
 			. '<code>'.htmlspecialchars(CCTM::$allowed_html_tags).'</code>';
 		$this->descriptions['evaluate_default_value'] = __('You can check this box if you want to enter a bit of PHP code into the default value field.');
+		
 		$this->descriptions['label'] = __('The label is displayed when users create or edit posts that use this custom field.', CCTM_TXTDOMAIN);
 		$this->descriptions['name'] = __('The name identifies the meta_key in the wp_postmeta database table. The name should contain only letters, numbers, and underscores. You will use this name in your template functions to identify this custom field.', CCTM_TXTDOMAIN);
 		$this->descriptions['name'] .= sprintf('<br /><span style="color:red;">%s</span>'
 			, __('WARNING: if you change the field name, you will have to update any functions that reference this field by name, e.g. <code>get_custom_field()</code>, <code>print_custom_field()</code>,  or any search criteria.', CCTM_TXTDOMAIN));
 			
-		$this->descriptions['is_repeatable'] = __('If selected, the user will be able to enter multiple instances of this field, e.g. multiple images. Storing multiple values infers storing an array of values, so you will have to use the "to_array" output filter, even if you only use one instance of the field.', CCTM_TXTDOMAIN);
+		$this->descriptions['is_repeatable'] = __('If selected, the user will be able to enter multiple instances of this field, e.g. multiple images. Your templates will need to handle formatting an array of values, e.g. via the "to_array" or other output filters, even if you only use one instance of the field.', CCTM_TXTDOMAIN);
 		$this->descriptions['required'] = __('If checked, users must add a value to this field before the page can be published.', CCTM_TXTDOMAIN);
 		$this->descriptions['checked_value'] = __('What value should be stored in the database when this checkbox is checked?', CCTM_TXTDOMAIN);
 		$this->descriptions['unchecked_value'] =  __('What value should be stored in the database when this checkbox is unchecked?', CCTM_TXTDOMAIN);
@@ -220,7 +223,22 @@ abstract class CCTM_FormElement {
 			$this->props[$k] = $v;
 		}
 	}
-
+	//------------------------------------------------------------------------------
+	//! Protected
+    //------------------------------------------------------------------------------
+    /**
+     * Get a visible listing of what the search parameters are for a relation field
+     * @param string $search_parameters_str URL encoded
+     * @return string
+     */
+    protected function _get_search_parameters_visible($search_parameters_str) {
+        require_once CCTM_PATH.'/includes/GetPostsQuery.php';
+		$Q = new GetPostsQuery();
+		parse_str($search_parameters_str, $args);
+		$Q = new GetPostsQuery($args);
+		return $Q->get_args();
+    }
+    
 	//------------------------------------------------------------------------------
 	//! Abstract and Public Functions... Implement Me!
 	//------------------------------------------------------------------------------
@@ -238,7 +256,7 @@ abstract class CCTM_FormElement {
 	 * @return string	html dropdown
 	 */
 	public function format_available_output_filters($def) {
-		$available_output_filters = CCTM::get_available_output_filters();
+		$available_output_filters = CCTM::get_available_helper_classes('filters');
 		require_once(CCTM_PATH.'/includes/CCTM_OutputFilter.php');
 
 		$out = '
@@ -285,7 +303,9 @@ abstract class CCTM_FormElement {
 
 	//------------------------------------------------------------------------------
 	/**
-	 * Get the standard fields
+	 * Get the standard fields for the field definition -- the "standard" fields are
+	 * the ones that represent the attributes that every field will have: 
+	 * Label, Name, Default Value, Extra, Class, is Repeatable, Description.
 	 *
 	 * @param	array	current def
 	 * @return	strin	HTML
@@ -389,19 +409,18 @@ abstract class CCTM_FormElement {
 		$validation_select = ''; // containing select element
 		$validator_options = ''; // options for the active validator (if any)
 		if ($show_validators) {
-			$validators = CCTM::get_available_validators();
+			$validators = CCTM::get_available_helper_classes('validators');
 			foreach ($validators as $shortname => $path) {
 			
-				$Vobj = CCTM::load_object($shortname, 'validator');
-				
+				$Vobj = CCTM::load_object($shortname, 'validators');
+				if (!$Vobj) {
+					continue;  // skip  bogus validators
+				}
 				$is_selected = '';
 				if ($this->validator == $shortname) {
 					$is_selected = ' selected="selected"';
 					$Vobj->set_options($this->validator_options);
-					$validator_options = $Vobj->get_options_html();
-					
-					$validator_options = sprintf('<div class="postbox"><h3 class="hndle"><span>%s</span></h3>
-				<div class="inside">%s</div></div>', __('Options', CCTM_TXTDOMAIN), $validator_options);
+					$validator_options = $Vobj->draw_options();
 				}
 				
 				$select_options .= sprintf('<option value="%s"%s>%s</option>', $shortname, $is_selected, $Vobj->get_name());
@@ -560,9 +579,10 @@ abstract class CCTM_FormElement {
 	//------------------------------------------------------------------------------
 	/**
 	 * This function should return the URL where users can read more information about
-	 * the type of field that they want to add to their post_type. The string may
-	 * be localized using __() if necessary (e.g. for language-specific pages)
-	 * 3rd party field devs can use this to point to their awesome docs!
+	 * this type of field (include a brief explanation and examples of how or why you'd
+	 * want to use it. The URL may be localized using __() if necessary (e.g. for 
+	 * language-specific pages). 3rd party field devs can use this to URL point to their 
+	 * awesome docs!
 	 *
 	 * @return string  e.g. http://www.yoursite.com/some/page.html
 	 */
@@ -570,8 +590,12 @@ abstract class CCTM_FormElement {
 
 
 	/**
-	 * If the field def was changed from dropdown to multi-select, the value would be
-	 * MYVALUE instead of ["MULTI"]... so the selection would fail.
+	 * This function handles converting the value stored in the database to a PHP data
+	 * type. Special logic is required to handle the JSON encoding of "repeatable" fields
+	 * and the possibility that the definition of the field changed.
+	 *
+	 * NOTE: If the field def was changed from dropdown to multi-select, the value 
+	 * would be MYVALUE instead of ["MYVALUE"]... so the selection would fail.
 	 *
 	 * If to_array is the conversion, then single values get converted to arrays.
 	 * If to_string is the conversion, then JSON encoded arrays return only the 1st
@@ -579,6 +603,7 @@ abstract class CCTM_FormElement {
 	 *
 	 * @param	string	$str
 	 * @param	string	$conversion to_string|to_array
+	 * @return mixed (a string or an array, depending on the $conversion)
 	 */		
 	public function get_value($str, $conversion='to_array') {
 		if ($conversion == 'to_array') {			
@@ -595,10 +620,10 @@ abstract class CCTM_FormElement {
 				return $out;
 			}
 		}
-		// to_string.  We do some special acrobatics here to handle the case where someone had a repeatable 
-		// field and they changed it to a normal singular field.  Repeatable fields would be JSON encoded,
+		// to_string.  We do some special acrobatics here to handle the case where a repeatable 
+		// field was changed a normal singular field.  Repeatable fields would be JSON encoded,
 		// so we test for that and we try to extract the 1st value.
-		// Note that json_decode treats alphabetical strings differently than numeric strings.
+		// Note that json_decode treats alphabetical strings differently than numeric strings!!!
 		else {
 			if ($str=='[""]') {
 				return '';
@@ -620,8 +645,8 @@ abstract class CCTM_FormElement {
 
 	//------------------------------------------------------------------------------
 	/**
-	 * Formats errors.  This function is useful only for devs as they develop their
-	 * own types of custom fields.
+	 * Formats errors in the field definition, e.g. invalid characters in field name, 
+	 * or reserved field name.
 	 *
 	 * @return string HTML describing any errors tracked in the class $errors variable
 	 */
@@ -671,6 +696,23 @@ abstract class CCTM_FormElement {
 		}
 	}
 
+    //------------------------------------------------------------------------------
+    /**
+     * Show a brief bit about the options defined for this field.  This is useful 
+     * when reviewing a list of custom fields.  It returns a short string describing
+     * the options set for this field.  Depending on the type of field, this may
+     * contain different info.
+     * @return string
+     */
+    public function get_options_desc() {
+        if (!empty($this->props['default_value'])) {
+            return $this->props['default_value'] .'<em>('.__('default',CCTM_TXTDOMAIN).')</em>';
+        }
+        else {
+            return '';
+        }
+    }
+    
 	//------------------------------------------------------------------------------
 	/**
 	 * Accessor to $this->props
@@ -683,7 +725,7 @@ abstract class CCTM_FormElement {
 	/**
 	 * Implement this function if your custom field has global settings that apply
 	 * to *all* instances of the field (e.g. an API key). If this function returns
-	 * anything except for false, then a menu item will be created for the custom
+	 * anything other than false, then a menu item will be created for the custom
 	 * field type. The function (if implemented), should return an HTML form that
 	 * allows users to modify the settings. The function must also handle the form
 	 * submission.
@@ -697,14 +739,13 @@ abstract class CCTM_FormElement {
 
 	//------------------------------------------------------------------------------
 	/**
-	 * A little clearing house for getting wrapped translations for various components
+	 * Wraps a given translation (from $this->descriptions) in a styled span.
 	 *
 	 * @param string  $item to identify which description you want.
 	 * @return string HTML localized description
 	 */
 	public function get_translation($item) {
-		$tpl = '<span class="cctm_description">%s</span>';
-		return sprintf($tpl, $this->descriptions[$item]);
+		return sprintf('<span class="cctm_description">%s</span>', $this->descriptions[$item]);
 	}
 
 
@@ -713,12 +754,12 @@ abstract class CCTM_FormElement {
 	 * This function allows for custom handling of submitted post/page data just before
 	 * it is saved to the database; it can be thought of loosely as the "on save" event.
 	 * Data validation and filtering should happen here, although it's difficult to
-	 * enforce any validation errors due to lack of an appropriate event.
+	 * enforce any validation errors due to lack of an appropriate event (uh...WP?)
 	 *
 	 * Output should be whatever string value you want to store in the wp_postmeta table
-	 * for the post in question. Default behavior is to simply trim the values.
+	 * for the post and field in question. Default behavior is to simply trim the values.
 	 *
-	 * Note that the field name in the $_POST array is prefixed by CCTM_FormElement::post_name_prefix,
+	 * Note that the field name in the $_POST array is prefixed with CCTM_FormElement::post_name_prefix,
 	 * e.g. the value for you 'my_field' custom field is stored in $_POST['cctm_my_field']
 	 * (where CCTM_FormElement::post_name_prefix = 'cctm_'). This is done to avoid name
 	 * collisions in the $_POST array.
@@ -740,7 +781,7 @@ abstract class CCTM_FormElement {
 				}
 				// This is what preserves the foreign characters while they traverse the json and WP gauntlet
 				// (yes, seriously we have to doubleslash it when we create a new post in versions
-				// of WP prior to 3.3
+				// of WP prior to 3.3!!!)
 				if (isset($posted_data['_cctm_is_create']) && version_compare($wp_version,'3.3','<')) {
 					return addslashes(addslashes(json_encode($posted_data[ CCTM_FormElement::post_name_prefix . $field_name ])));
 				}
@@ -807,17 +848,20 @@ abstract class CCTM_FormElement {
 			// it's a CREATE operation
 			if ( empty($this->original_name) ) {
 
-				if ( isset(CCTM::$data['custom_field_defs']) && is_array(CCTM::$data['custom_field_defs'])
-					&& in_array( $posted_data['name'], array_keys(CCTM::$data['custom_field_defs']))) {
-					$this->errors['name'][] = sprintf( __('The name %s is already in use. Please choose another name.', CCTM_TXTDOMAIN), '<em>'.$posted_data['name'].'</em>');
-					$posted_data['name'] = '';
+				if ( isset(CCTM::$data['custom_field_defs']) && is_array(CCTM::$data['custom_field_defs'])) {
+					foreach (CCTM::$data['custom_field_defs'] as $cf =>$def) {
+						if (strtolower($posted_data['name']) == strtolower($cf)) {
+							$this->errors['name'][] = sprintf( __('The name %s is already in use. Please choose another name.', CCTM_TXTDOMAIN), '<em>'.$posted_data['name'].'</em>');						
+						}					
+					}
 				}
 			}
 			// it's an EDIT operation and we're renaming the field
 			elseif ( $this->original_name != $posted_data['name'] ) {
-				if ( isset(CCTM::$data['custom_field_defs']) && is_array(CCTM::$data['custom_field_defs'])
-					&& in_array( $posted_data['name'], array_keys(CCTM::$data['custom_field_defs']) ) ) {
-					$this->errors['name'][] = sprintf( __('The name %s is already in use. Please choose another name.', CCTM_TXTDOMAIN), '<em>'.$posted_data['name'].'</em>');
+				if ( isset(CCTM::$data['custom_field_defs']) && is_array(CCTM::$data['custom_field_defs'])) {
+						if (strtolower($posted_data['name']) == strtolower($cf)) {
+							$this->errors['name'][] = sprintf( __('The name %s is already in use. Please choose another name.', CCTM_TXTDOMAIN), '<em>'.$posted_data['name'].'</em>');						
+						}
 					$posted_data['name'] = '';
 				}
 			}
@@ -839,6 +883,19 @@ abstract class CCTM_FormElement {
 		return array_merge($posted_data, $this->immutable);
 	}
 
+	//------------------------------------------------------------------------------
+	/**
+	 * Shepherded access to the $this->props array.
+	 */
+	public function set_prop($key, $value) {
+		if (is_scalar($key)) {
+			$this->$key = $value;
+		}
+		else {
+			$this->errors['improper_input_set_props'] = __('Improper input to the set_prop() function.', CCTM_TXTDOMAIN);
+		}
+	}
+	
 	//------------------------------------------------------------------------------
 	/**
 	 * Shepherded access to the $this->props array.

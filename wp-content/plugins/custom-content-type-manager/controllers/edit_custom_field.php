@@ -19,7 +19,7 @@ if (!array_key_exists($field_name, self::$data['custom_field_defs'])) {
 // Page variables
 $data = array();
 $data['page_title'] = sprintf(__('Edit Custom Field: %s', CCTM_TXTDOMAIN), $field_name );
-$data['help'] = 'http://code.google.com/p/wordpress-custom-content-type-manager/wiki/SupportedCustomFields';
+$data['help'] = 'http://code.google.com/p/wordpress-custom-content-type-manager/wiki/CustomFieldDefinitions';
 $data['msg'] = '';
 $data['menu'] = sprintf('<a href="'.get_admin_url(false,'admin.php').'?page=cctm_fields&a=list_custom_fields" title="%s" class="button">%s</a>', __('Cancel'), __('Cancel'));
 $data['submit'] = __('Save', CCTM_TXTDOMAIN);
@@ -37,9 +37,9 @@ $displayable_types = self::get_post_types();
 $field_type = self::$data['custom_field_defs'][$field_name]['type'];
 $field_data = self::$data['custom_field_defs'][$field_name]; // Data object we will save
 
-self::include_form_element_class($field_type); // This will die on errors
-$field_type_name = self::classname_prefix.$field_type;
-$FieldObj = new $field_type_name(); // Instantiate the field element
+if(!$FieldObj = CCTM::load_object($field_type, 'fields')) {
+	die('Field not found.');
+}
 
 $field_data['original_name'] = $field_name;
 $FieldObj->set_props($field_data);  
@@ -66,7 +66,7 @@ if ( !empty($_POST) && check_admin_referer($data['action_name'], $data['nonce_na
 				$def = self::$data['post_type_defs'][$pt];
 			}
 			
-			if (in_array($field_name, $def['custom_fields'])) {
+			if (is_array($def['custom_fields']) && in_array($field_name, $def['custom_fields'])) {
 				$revised_custom_fields = array();
 				foreach ($def['custom_fields'] as $cf) {
 					if ( $cf != $field_name ) {
@@ -130,6 +130,7 @@ if ( !empty($_POST) && check_admin_referer($data['action_name'], $data['nonce_na
 		}
 		self::$data['custom_field_defs'][ $field_data['name'] ] = $field_data;
 		update_option( self::db_key, self::$data );
+		$continue_editing = CCTM::get_value($_POST, 'continue_editing');
 		unset($_POST);
 		
 		
@@ -137,8 +138,12 @@ if ( !empty($_POST) && check_admin_referer($data['action_name'], $data['nonce_na
 			, sprintf(__('The %s custom field has been edited.', CCTM_TXTDOMAIN)
 			, '<em>'.$field_name.'</em>'));		
 		self::set_flash($data['msg']);
-		include(CCTM_PATH.'/controllers/list_custom_fields.php');
-		return;
+		
+		if (!$continue_editing) {
+			include(CCTM_PATH.'/controllers/list_custom_fields.php');
+			return;
+		}
+		$FieldObj->set_props($field_data);
 	}
 }
 
@@ -227,6 +232,12 @@ foreach ($displayable_types as $post_type) {
 		&& in_array($field_name, self::$data['post_type_defs'][$post_type]['custom_fields'])) {
 		$is_checked = ' checked="checked"';
 	}
+	
+	$post_type_label = '<span style="color:gray;">'.$post_type.'</span>';
+	if (isset(self::$data['post_type_defs'][$post_type]['is_active']) && self::$data['post_type_defs'][$post_type]['is_active']) {
+		$post_type_label = $post_type; // keep it black
+	}
+	
 	$data['associations'] .= sprintf('
 		<tr>
 			<td><input type="checkbox" name="post_types[]" id="%s" value="%s" %s/></td>
@@ -240,7 +251,7 @@ foreach ($displayable_types as $post_type) {
 		, $is_checked
 		, $icon
 		, $post_type
-		, $post_type
+		, $post_type_label
 		, $def['description']
 		, $target_url
 	);

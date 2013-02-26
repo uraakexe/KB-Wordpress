@@ -1,6 +1,8 @@
 <?php
 /**
- * Library used by the create_post_type.php and edit_post_type.php controllers
+ * Library used by the create_post_type.php and edit_post_type.php controllers. 
+ * I've offloaded functions from the main CCTM class to here because they're only
+ * used in these certain situations.
  */
 class CCTM_PostTypeDef {
 
@@ -154,7 +156,7 @@ class CCTM_PostTypeDef {
 	 * @param	string	HTML output (dropdown options)
 	 */
 	public static function get_orderby_options($post_type) {
-	
+
 		$output = '<option value="">'.__('Default', CCTM_TXTDOMAIN).'</option>';
 		
 		$built_in_columns = CCTM::$reserved_field_names;
@@ -167,7 +169,6 @@ class CCTM_PostTypeDef {
 			}
 			$output .= sprintf('<option value="%s" %s>%s</option>', $c, $is_selected, __($c));
 		}
-		
 		
 		$custom_fields = array();
 		if (isset(CCTM::$data['post_type_defs'][$post_type]['custom_fields'])) {
@@ -382,7 +383,6 @@ class CCTM_PostTypeDef {
 		// WP always adds slashes: see http://kovshenin.com/archives/wordpress-and-magic-quotes/
 		$raw = CCTM::stripslashes_deep(($raw));
 
-
 		
 		// Handle unchecked checkboxes
 		if ( empty($raw['cctm_hierarchical_custom'])) {
@@ -397,6 +397,10 @@ class CCTM_PostTypeDef {
 		if ( !isset($raw['cctm_custom_columns_enabled'])) {
 			$sanitized['cctm_custom_columns_enabled'] = 0;
 		}
+		if ( !isset($raw['cctm_enable_right_now'])) {
+			$sanitized['cctm_enable_right_now'] = 0;
+		}
+		
 
 		// This will be empty if no "supports" items are checked.
 		if (!empty($raw['supports']) ) {
@@ -450,6 +454,8 @@ class CCTM_PostTypeDef {
 		$sanitized['include_in_search']    = (bool) CCTM::get_value($raw, 'include_in_search');
 		$sanitized['publicly_queryable']    = (bool) CCTM::get_value($raw, 'publicly_queryable');
 		$sanitized['include_in_rss']    = (bool) CCTM::get_value($raw, 'include_in_rss');
+		$sanitized['map_meta_cap']    = (bool) CCTM::get_value($raw, 'map_meta_cap');
+		$sanitized['show_in_admin_bar']    = (bool) CCTM::get_value($raw, 'show_in_admin_bar');
 
 		if ( empty($sanitized['has_archive']) ) {
 			$sanitized['has_archive'] = false;
@@ -524,13 +530,13 @@ class CCTM_PostTypeDef {
 			break;
 		case 'Custom':
 			$sanitized['rewrite']['slug'] = $raw['rewrite_slug'];
-			$sanitized['rewrite']['with_front'] = (bool) $raw['rewrite_with_front'];
+			$sanitized['rewrite']['with_front'] = isset($raw['rewrite_with_front']) ? (bool) $raw['rewrite_with_front'] : false;
 			break;
 		case 'Off':
 		default:
 			$sanitized['rewrite'] = false;
 		}
-
+		
 		return $sanitized;
 	}
 

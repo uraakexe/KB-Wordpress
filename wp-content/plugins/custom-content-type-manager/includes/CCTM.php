@@ -19,8 +19,8 @@ class CCTM {
 	// See http://php.net/manual/en/function.version-compare.php:
 	// any string not found in this list < dev < alpha =a < beta = b < RC = rc < # < pl = p
 	const name   = 'Custom Content Type Manager';
-	const version = '0.9.5.13';
-	const version_meta = 'pl'; // dev, rc (release candidate), pl (public release)
+	const version = '0.9.7.1';
+	const version_meta = 'dev'; // dev, rc (release candidate), pl (public release)
 
 	// Required versions (referenced in the CCTMtest class).
 	const wp_req_ver  = '3.3';
@@ -97,8 +97,7 @@ class CCTM {
 	// for post_types and custom fields
 	public static $data = array();
 
-	// Cached data.
-	// CCTM::$cache['request'] = data cached for a single request, e.g. custom field values.
+	// Cached data: for a single request, e.g. custom field values.
 	public static $cache = array();
 
 	// integer iterator used to uniquely identify groups of field definitions for
@@ -136,17 +135,22 @@ class CCTM {
 		'label' => '',
 		'menu_position' => '',
 		'show_in_menu' => 1,
-
+		'cctm_show_in_menu' => 1,
+		
 		'rewrite_with_front' => 1,
 		'permalink_action' => 'Off',
 		'rewrite_slug' => '',
+		'show_in_admin_bar' => 1,
 		'query_var' => '',
 		'capability_type' => 'post',
+		'capabilities' => '',
+		'register_meta_box_cb' => '',
+		'map_meta_cap' => 0,
 		'show_in_nav_menus' => 1,
 		'publicly_queryable' => 1,
 		'include_in_search' => 1, // this makes more sense to users than the exclude_from_search,
 		'exclude_from_search' => 0, // but this is what register_post_type expects. Boo.
-		'include_in_rss' => 1,  // this is a custom option
+		'include_in_rss' => 1,  // this is a custom option.. should use 'cctm' prefix. Oops.
 		'can_export' => 1,
 		'use_default_menu_icon' => 1,
 		'hierarchical' => 0,
@@ -154,17 +158,17 @@ class CCTM {
 		'has_archive' => 0,
 		'custom_order' => 'ASC',
 		'custom_orderby' => '',
-		'cctm_custom_columns_enabled' => 0
+		'cctm_custom_columns_enabled' => 0,
+		'cctm_enable_right_now' => 1
 	);
 
 	/**
-	 * List default settings here. (checkboxes only)
+	 * List default global settings here. (see controllers/settings.php)
 	 */
 	public static $default_settings = array(
 		'delete_posts' => 0
 		, 'delete_custom_fields' => 0
 		, 'add_custom_fields' => 0
-		, 'update_custom_fields' => 0
 		, 'show_custom_fields_menu' => 1
 		, 'show_settings_menu' => 1
 		, 'show_foreign_post_types' => 1
@@ -175,6 +179,22 @@ class CCTM {
 		, 'custom_fields_tinymce' => 1
 		, 'flush_permalink_rules' => 1
 		, 'pages_in_rss_feed'	=> 0
+		, 'enable_right_now'	=> 1
+		, 'hide_posts'	=> 0
+		, 'hide_pages'	=> 0
+		, 'hide_links'	=> 0
+		, 'hide_comments' => 0
+	);
+
+	// Default metabox definition
+	public static $metabox_def = array(
+		'id' => 'cctm_default',
+		'title' => 'Custom Fields',
+		'context' => 'normal',
+		'priority' => 'default',
+		'post_types' => array(),
+		'callback' => '',
+		'callback_args' => '',
 	);
 
 	// Where are the icons for custom images stored?
@@ -288,8 +308,8 @@ class CCTM {
 				__('Could not create the cache directory at %s.', CCTM_TXTDOMAIN)
 				, "<code>$cache_dir</code>. Please create the directory with permissions so PHP can write to it.");
 
-			if (defined('CCTM_DEBUG') && CCTM_DEBUG == true) {			
-				$myFile = "/tmp/cctm.txt";
+			if (defined('CCTM_DEBUG')) {			
+				$myFile = CCTM_DEBUG;
 				$fh = fopen($myFile, 'a') or die("can't open file");
 				fwrite($fh, 'Failed to create directory '.$cache_dir.$subdir."\n");
 				fclose($fh);
@@ -326,12 +346,12 @@ class CCTM {
 	
 	//------------------------------------------------------------------------------
 	/**
-	 * Prepare a post type definition for registration.  This gets run immediately 
-	 * before the register_post_type() function is called.  It allows us to abstract 
-	 * what WP gets from the stored definition a bit.
+	 * Prepare a post type definition for registration: this translates the data structure
+	 * as it is stored into how it needs to appear in order to be passed to the 
+	 * register_post_type() function.
 	 *
-	 * @param mixed   the CCTM definition for a post type
-	 * @param unknown $def
+	 * @param array   the CCTM definition for a post type
+	 * @param array $def
 	 * @return mixed  the WordPress authorized definition format.
 	 */
 	private static function _prepare_post_type_def($def) {
@@ -342,6 +362,9 @@ class CCTM {
 		else {
 			$def['show_in_menu'] = (bool) self::get_value($def, 'cctm_show_in_menu');
 		}
+		
+		$def['hierarchical'] = (bool) self::get_value($def, 'hierarchical');
+		
 		// We display "include" type options to the user, and here on the backend
 		// we swap this for the "exclude" option that the function requires.
 		$include = self::get_value($def, 'include_in_search');
@@ -371,7 +394,51 @@ class CCTM {
 		) {
 			$def['public'] = true;
 		}
+		
+		// Provide default mapping if none are supplied verbosely.
+		// See http://code.google.com/p/wordpress-custom-content-type-manager/issues/detail?id=409
+		// http://code.google.com/p/wordpress-custom-content-type-manager/issues/detail?id=460
+		if (empty($def['capabilities']) && isset($def['capability_type']) && !empty($def['capability_type'])) {
+			$capability_type = $def['capability_type'];
+			$def['capabilities'] = array(
+			    'edit_post'              => "edit_{$capability_type}",
+			    'read_post'              => "read_{$capability_type}",
+			    'delete_post'            => "delete_{$capability_type}",
+			    'edit_posts'             => "edit_{$capability_type}s",
+			    'edit_others_posts'      => "edit_others_{$capability_type}s",
+			    'publish_posts'          => "publish_{$capability_type}s",
+			    'read_private_posts'     => "read_private_{$capability_type}s",
+			    'delete_posts'           => "delete_{$capability_type}s",
+			    'delete_private_posts'   => "delete_private_{$capability_type}s",
+			    'delete_published_posts' => "delete_published_{$capability_type}s",
+			    'delete_others_posts'    => "delete_others_{$capability_type}s",
+			    'edit_private_posts'     => "edit_private_{$capability_type}s",
+			    'edit_published_posts'   => "edit_published_{$capability_type}s",
+			);
+		}
+		elseif (empty($def['capabilities'])) {
+			unset($def['capabilities']);		
+		}
+		elseif(is_scalar($def['capabilities'])) {
+			$capabilities = array();
+			parse_str($def['capabilities'], $z);
+			$def['capabilities'] = $capabilities;
+		}
+		// Ignore the capabilities mapping unless we have the map_meta_cap checked.
+		// The map_meta_cap MUST be unset or a literal null.
+		if (!CCTM::get_value($def,'map_meta_cap')) {
+			unset($def['capabilities']);
+			unset($def['map_meta_cap']);
+		}
 
+		// Allow for singular,plural capability_type's
+		if (isset($def['capability_type'])) {				
+			$tmp_capability_type = explode(',',$def['capability_type']);			
+			if (count($tmp_capability_type) > 1) {
+				array_walk($tmp_capability_type,'trim');
+				$def['capability_type'] = $tmp_capability_type;
+			}
+		}		
 		unset($def['custom_orderby']);
 
 		return $def;
@@ -409,7 +476,7 @@ class CCTM {
 			// Also, we have to fix the bugs with WP's thickbox.js, so here we include a patched file.
 			wp_register_script('cctm_thickbox', CCTM_URL . '/js/thickbox.js', array('thickbox') );
 			wp_enqueue_script('cctm_thickbox');
-			wp_enqueue_style('thickbox' );
+			wp_enqueue_style('thickbox');
 
 			wp_enqueue_style('jquery-ui-tabs', CCTM_URL . '/css/smoothness/jquery-ui-1.8.11.custom.css');
 			wp_enqueue_script('jquery-ui-tabs');
@@ -449,7 +516,7 @@ class CCTM {
 	 * @return array $links
 	 */
 	public static function add_plugin_settings_link($links, $file) {
-		if ( $file == basename(self::get_basepath()) . '/index.php' ) {
+		if ( $file == basename(dirname(dirname(__FILE__))) . '/index.php' ) {
 			$settings_link = sprintf('<a href="%s">%s</a>'
 				, admin_url( 'admin.php?page=cctm' )
 				, __('Settings')
@@ -538,6 +605,10 @@ class CCTM {
 					update_option( self::db_key, self::$data );
 				}
 			}
+			// Clear the cache
+			unset(CCTM::$data['cache']);
+			unset(CCTM::$data['warnings']);
+			update_option(self::db_key, self::$data);
 		}
 
 		// If this is empty, then it is a first install, so we timestamp it
@@ -613,9 +684,8 @@ class CCTM {
 	 * @param	string $dirPath
 	 */
 	public static function delete_dir($dirPath) {
-	    if (! is_dir($dirPath)) {
+	    if (!is_dir($dirPath)) {
 	    	return false;
-//	        throw new InvalidArgumentException('$dirPath must be a directory');
 	    }
 	    if (substr($dirPath, strlen($dirPath) - 1, 1) != '/') {
 	        $dirPath .= '/';
@@ -624,7 +694,8 @@ class CCTM {
 	    foreach ($files as $file) {
 	        if (is_dir($file)) {
 	            self::delete_dir($file);
-	        } else {
+	        } 
+	        else {
 	            unlink($file);
 	        }
 	    }
@@ -633,7 +704,8 @@ class CCTM {
 
 	//------------------------------------------------------------------------------
 	/**
-	 * The static invocation of filtering an input through an Output Filter
+	 * This is CCTM's own filter function, the engine behind all available CCTM
+	 * Output Filters, but this can also be called statically. 
 	 *
 	 * @param mixed $value to be filtered, usually a string.
 	 * @param string $outputfilter name, e.g. 'to_array'
@@ -646,48 +718,83 @@ class CCTM {
 
 		require_once CCTM_PATH.'/includes/CCTM_OutputFilter.php';
 		
-		// If we've already loaded it, re-use it
-		if (class_exists($filter_class)) { 		
-			$OutputFilter = new $filter_class();
-			return $OutputFilter->filter($value, $options);
+		if ($OutputFilter = CCTM::load_object($outputfilter,'filters')) {
+			return $OutputFilter->filter($value, $options);		
 		}
-		
-		// Load the file if we haven't already
-		if (CCTM::load_file(array("/filters/$outputfilter.php"))) {
-		
-			// This checks if the file implemented the correct class 
-			if ( !class_exists($filter_class) ) {
-				self::$errors['incorrect_classname'] = sprintf( __('Incorrect class name in %s Output Filter. Expected class name: %s', CCTM_TXTDOMAIN)
-					, "<strong>$outputfilter</strong>"
-					, "<strong>$filter_class</strong>"
-				);
-				return $value;
-			}
-			// Ok, we've loaded the right class... let's use it.
-			$OutputFilter = new $filter_class();
-			return $OutputFilter->filter($value, $options);
-						
-		}		
 		else {
-			self::$errors['filter_not_found'] = sprintf(
-				__('Output filter not found: %s', CCTM_TXTDOMAIN)
-				, "<code>$outputfilter</code>");
 			return $value;
 		}
-
-
 	}
 
+	/**
+	 * This filters the post_name (intercepting the WP sanitize_title event).
+	 * This is important for hierarchical post-types because WP incorrectly identifies
+	 * the post_name when a hiearchical post-type URL is encountered, e.g. 
+	 * 	http://wpcctm.com/movie/lord-of-the-rings/fellowship-of-the-ring/
+	 *
+	 * WP searches the database via post_name, and it thinks the post_name is:
+	 * "lord-of-the-ringsfellowship-of-the-ring".  So we have to grab the last segment
+	 * of the URL because only the last segment is stored in the database as the title.
+	 *
+	 * 
+	 *
+	 * @param	string	$title the post_name, e.g. "lord-of-the-rings/fellowship-of-the-ring"
+	 * @param	string	$raw_title
+	 * @param	string 	$context "query" or "save"
+	 *
+	 * @return string
+	 */
+	public static function filter_sanitize_title($title, $raw_title, $context) {
+		
+		// This isn't always called on the public-side... it gets called in the manager too.
+		if ('query' == $context) {
+			global $wp_query;
+			if (!is_object($wp_query)) {
+				return $title;
+			}
 
+			$post_type = CCTM::get_value($wp_query->query_vars, 'post_type');
+			// Don't mess with foreign post-types.
+			// See http://code.google.com/p/wordpress-custom-content-type-manager/issues/detail?id=425
+			if (!is_scalar($post_type)
+				|| !isset(CCTM::$data['post_type_defs'][$post_type]['cctm_hierarchical_custom'])) {
+				return $title;
+			}
+			// To avoid problems when this filter is called unexpectedly... e.g. category pages has an array of post_types
+			if (empty($post_type) || is_array($post_type)) {
+				return $title; // 
+			}
+			//checking cctm_hierarchical_custom is not necessary because BOTH boxes must be checked.
+			// Get the last URL segment.  E.g. given house/room/chair, this would return 'chair'
+			if (isset(CCTM::$data['post_type_defs'][$post_type]) && CCTM::$data['post_type_defs'][$post_type]['hierarchical'] ) {
+				$segments = explode('/',$title);
+				$title = array_pop($segments);
+			}
+		}
+		
+		return $title;
+	}
+	
 	//------------------------------------------------------------------------------
 	/**
 	 * Adds formatting to a string to make an "error" message.
 	 *
-	 * @param string $msg localized error message
+	 * @param mixed $msg localized error message, or an array of messages
+	 * @param string $title optional
 	 * @return string
 	 */
-	public static function format_error_msg($msg) {
-		return sprintf('<div class="error"><p>%s</p></div>', $msg);
+	public static function format_error_msg($msg,$title='') {
+		if ($title) {
+			$title = '<h3>'.$title.'</h3>';
+		}
+		if (is_array($msg)) {
+			$tmp = '';
+			foreach($msg as $m) {
+				$tmp .= '<li>'.$m.'</li>';
+			}
+			$msg = '<ul style="margin-left:30px">'.$tmp.'</ul>';
+		}
+		return sprintf('<div class="error">%s<p>%s</p></div>', $title, $msg);
 	}
 
 
@@ -784,26 +891,35 @@ class CCTM {
 		return str_replace( "post_type = 'post'" , "post_type IN ( $post_types )" , $where );
 	}
 
-
 	//------------------------------------------------------------------------------
 	/**
-	 * Gets an array of full pathnames/filenames for all custom field types.
+	 * Gets an array of full pathnames/filenames for all helper classes (validators,
+	 * Output Filters, or Custom Fields).
 	 * This searches the built-in location AND the add-on location inside
-	 * wp-content/uploads/cctm.  If there are duplicate filenames, the one inside the
-	 * 3rd-party directory will take precedence: this allows developers to override
-	 * the built-in custom field classes.
+	 * wp-content/uploads. If there are duplicate filenames, the one inside the
+	 * 3rd party directory will take precedence: this allows developers to override
+	 * the built-in classes.
 	 *
-	 * TODO: This function will read the results from the cache
+	 * 3rd party Custom field classes are special: they use a '.class.php' suffix and their 
+	 * files can reside in a subdirectory, e.g. fields/myfield/myfield.class.php
+	 * This is because custom fields may have ancillary php files that should not be 
+	 * counted as viable helper classes. 
 	 *
-	 * @return array e.g. array('shortname' => '/full/path/to/shortname.php')
+	 * @param string $type validators|filters|fields
+	 * @return array Associative array: array('shortname' => '/full/path/to/shortname.php')
 	 */
-	public static function get_available_custom_field_types() {
-
-		// prep for output...
+	public static function get_available_helper_classes($type) {
+	
+		// return from cache, if available
+		if(isset(self::$data['cache']['helper_classes'][$type])) {
+			return self::$data['cache']['helper_classes'][$type];
+		}
+		
+		// Ye olde output
 		$files = array();
-
+		
 		// Scan default directory
-		$dir = CCTM_PATH .'/fields';
+		$dir = CCTM_PATH .'/'.$type;
 		$rawfiles = scandir($dir);
 		foreach ($rawfiles as $f) {
 			if ( !preg_match('/^\./', $f) && preg_match('/\.php$/', $f) ) {
@@ -813,153 +929,46 @@ class CCTM {
 			}
 		}
 
-		// Scan 3rd party directory and subdirectories
+		// Scan 3rd party directory
 		$upload_dir = wp_upload_dir();
-		// it might come back something like
-		// Array ( [error] => Unable to create directory /path/to/wp-content/uploads/2011/10. Is its parent directory writable by the server? )
 		if (isset($upload_dir['error']) && !empty($upload_dir['error'])) {
 			self::register_warning( __('WordPress issued the following error: ', CCTM_TXTDOMAIN) .$upload_dir['error']);
 		}
 		else {
-			$dir = $upload_dir['basedir'] .'/'.CCTM::base_storage_dir . '/' . CCTM::custom_fields_dir;
+			$dir = $upload_dir['basedir'] .'/'.CCTM::base_storage_dir . '/'.$type;
 			if (is_dir($dir)) {
 				$rawfiles = scandir($dir);
-				foreach ($rawfiles as $subdir) {
-					if (preg_match('/^\./', $subdir)) {
+				foreach ($rawfiles as $f) {
+					if (preg_match('/^\./', $f)) {
 						continue; // skip the '.' and '..' dirs
 					}
+					// Check the main dir
+					if (preg_match('/\.php$/', $f) ) {
+						$shortname = basename($f);
+						$shortname = preg_replace('/\.php$/', '', $shortname);
+						$files[$shortname] = $dir.'/'.$f;
+					}
 					// check subdirectories
-					if (is_dir($dir.'/'.$subdir)) {
-						$morerawfiles = scandir($dir.'/'.$subdir);
-						foreach ($morerawfiles as $f) {
-							if ( !preg_match('/^\./', $f) && preg_match('/\.class\.php$/', $f) ) {
-								$shortname = basename($f);
+					elseif (is_dir($dir.'/'.$f)) {
+						$morerawfiles = scandir($dir.'/'.$f);
+						foreach ($morerawfiles as $f2) {
+							if ( !preg_match('/^\./', $f2) && preg_match('/\.class\.php$/', $f2) ) {
+								$shortname = basename($f2);
 								$shortname = preg_replace('/\.class\.php$/', '', $shortname);
-								$files[$shortname] = $dir.'/'.$subdir.'/'.$f;
+								$files[$shortname] = $dir.'/'.$subdir.'/'.$f2;
 							}
 						}
 					}
-					// Check the main directory too.
-					elseif (preg_match('/\.php$/', $subdir) ) {
-						$shortname = basename($subdir);
-						$shortname = preg_replace('/\.php$/', '', $shortname);
-						$files[$shortname] = $dir.'/'.$subdir;
-					}
 				}
 			}
 		}
 		
-		return $files;
-	}
-
-
-	//------------------------------------------------------------------------------
-	/**
-	 * Gets an array of full pathnames/filenames for all output filters.
-	 * This searches the built-in location AND the add-on location inside
-	 * wp-content/uploads. If there are duplicate filenames, the one inside the
-	 * 3rd party directory will take precedence: this allows developers to override
-	 * the built-in output filter classes.
-	 *
-	 * @return array Associative array: array('shortname' => '/full/path/to/shortname.php')
-	 */
-	public static function get_available_output_filters() {
-	
-		// Ye olde output
-		$files = array();
+		// write to cache
+		self::$data['cache']['helper_classes'][$type] = $files;
+		update_option(self::db_key, self::$data);
 		
-		// Scan default directory (should this be hardcoded?)
-		$dir = CCTM_PATH .'/filters';
-		$rawfiles = scandir($dir);
-		foreach ($rawfiles as $f) {
-			if ( !preg_match('/^\./', $f) && preg_match('/\.php$/', $f) ) {
-				$shortname = basename($f);
-				$shortname = preg_replace('/\.php$/', '', $shortname);
-				$files[$shortname] = $dir.'/'.$f;
-			}
-		}
-
-		// Scan 3rd party directory
-		$upload_dir = wp_upload_dir();
-		if (isset($upload_dir['error']) && !empty($upload_dir['error'])) {
-			self::register_warning( __('WordPress issued the following error: ', CCTM_TXTDOMAIN) .$upload_dir['error']);
-		}
-		else {
-			$dir = $upload_dir['basedir'] .'/'.CCTM::base_storage_dir . '/filters';
-			if (is_dir($dir)) {
-				$rawfiles = scandir($dir);
-				foreach ($rawfiles as $f) {
-					if ( !preg_match('/^\./', $f) && preg_match('/\.php$/', $f) ) {
-						$shortname = basename($f);
-						$shortname = preg_replace('/\.php$/', '', $shortname);
-						$files[$shortname] = $dir.'/'.$f;
-					}
-				}
-			}
-		}
-	//die('<pre>'.print_r($files, true).'</pre>');
 		return $files;
 	}
-
-
-	//------------------------------------------------------------------------------
-	/**
-	 * Gets an array of full pathnames/filenames for all validators.
-	 * This searches the built-in location AND the add-on location inside
-	 * wp-content/uploads. If there are duplicate filenames, the one inside the
-	 * 3rd party directory will take precedence: this allows developers to override
-	 * the built-in output filter classes.
-	 *
-	 * @return array Associative array: array('shortname' => '/full/path/to/shortname.php')
-	 */
-	public static function get_available_validators() {
-	
-		// Ye olde output
-		$files = array();
-		
-		// Scan default directory (should this be hardcoded?)
-		$dir = CCTM_PATH .'/validators';
-		$rawfiles = scandir($dir);
-		foreach ($rawfiles as $f) {
-			if ( !preg_match('/^\./', $f) && preg_match('/\.php$/', $f) ) {
-				$shortname = basename($f);
-				$shortname = preg_replace('/\.php$/', '', $shortname);
-				$files[$shortname] = $dir.'/'.$f;
-			}
-		}
-
-		// Scan 3rd party directory
-		$upload_dir = wp_upload_dir();
-		if (isset($upload_dir['error']) && !empty($upload_dir['error'])) {
-			self::register_warning( __('WordPress issued the following error: ', CCTM_TXTDOMAIN) .$upload_dir['error']);
-		}
-		else {
-			$dir = $upload_dir['basedir'] .'/'.CCTM::base_storage_dir . '/validators';
-			if (is_dir($dir)) {
-				$rawfiles = scandir($dir);
-				foreach ($rawfiles as $f) {
-					if ( !preg_match('/^\./', $f) && preg_match('/\.php$/', $f) ) {
-						$shortname = basename($f);
-						$shortname = preg_replace('/\.php$/', '', $shortname);
-						$files[$shortname] = $dir.'/'.$f;
-					}
-				}
-			}
-		}
-	//die('<pre>'.print_r($files, true).'</pre>');
-		return $files;
-	}
-
-	//------------------------------------------------------------------------------
-	/**
-	 *  Defines the diretory for this plugin.
-	 *
-	 * @return string
-	 */
-	public static function get_basepath() {
-		return dirname(dirname(__FILE__));
-	}
-
 
 	//------------------------------------------------------------------------------
 	/**
@@ -1217,7 +1226,7 @@ class CCTM {
 			}
 			// Built-in WP types: we go for the default icon.
 			else {
-				list($src, $w, $h) = wp_get_attachment_image_src( $id, 'tiny_thumb', true, array('alt'=>__('Preview', CCTM_TXTDOMAIN)));
+				list($src, $w, $h) = wp_get_attachment_image_src( $id, 'thumbnail', true, array('alt'=>__('Preview', CCTM_TXTDOMAIN)));
 				$thumbnail_url = $src;
 			}
 		}
@@ -1263,52 +1272,6 @@ class CCTM {
 		return $stuff;
 	}
 
-
-	//------------------------------------------------------------------------------
-	/**
-	 * Includes the class file for the field type specified by $field_type. The
-	 * built-in directory is searched as well as the custom add-on directory.
-	 * Precedence is given to the built-in directory.
-	 * On success, the file is included and a true is returned.
-	 * On error, the file is NOT included and a false is returned: errors are registered.
-	 *
-	 * @param string  $field_type class name WITHOUT prefix
-	 * @return boolean
-	 */
-	public static function include_form_element_class($field_type) {
-		
-		if (empty($field_type) ) {
-			self::$errors['missing_field_type'] = __('Field type is empty.', CCTM_TXTDOMAIN);
-			return false;
-		}
-		
-		$classname = self::classname_prefix.$field_type;
-		
-		if (class_exists($classname)) {
-			return true;
-		}
-
-
-		require_once CCTM_PATH.'/includes/CCTM_FormElement.php';
-		
-		if (CCTM::load_file(array("/fields/$field_type.php","/fields/$field_type/$field_type.class.php"))) {
-			if ( !class_exists($classname) ) {
-				self::$errors['incorrect_classname'] = sprintf( __('Incorrect class name in %s file. Expected class name: %s', CCTM_TXTDOMAIN)
-					, $field_type
-					, $classname
-				);
-				return false;
-			}
-		}
-		else {
-			$msg = sprintf(__('The class file for %s fields could not be found. Did you move or delete the file?', CCTM_TXTDOMAIN), "<code>$field_type</code>");
-			self::register_warning($msg);
-			return false;
-		}
-
-		return true;
-	}
-
 	//------------------------------------------------------------------------------
 	/**
 	 * Each custom field can optionally do stuff during the admin_init event -- this
@@ -1329,7 +1292,6 @@ class CCTM {
 	public static function initialize_custom_fields() {
 
 		// Look around/read variables to get our bearings
-		// $available_custom_field_files = CCTM::get_available_custom_field_types(true);
 		$page = substr($_SERVER['SCRIPT_NAME'], strrpos($_SERVER['SCRIPT_NAME'], '/')+1);
 		$fieldtype = self::get_value($_GET, 'type');
 		$fieldname = self::get_value($_GET, 'field');
@@ -1388,22 +1350,14 @@ class CCTM {
 			$fieldtype = self::get_value(self::$data['custom_field_defs'][$fieldname], 'type');
 			$field_types[] = $fieldtype;
 		}
+		elseif ($page == 'admin.php' && $action =='duplicate_custom_field') {
+			$field_types[] = CCTM::get_value($_GET,'type');
+		}
 
 		// We only get here if we survived the gauntlet above
 		foreach ($field_types as $shortname) {
-			$classname = self::classname_prefix . $shortname;
-			if (class_exists($classname)) {
-				$Obj = new $classname();
-				$Obj->admin_init();				
-			}
-			else {
-				if (CCTM::load_file(array("/fields/$shortname.php", "/fields/$shortname/$shortname.class.php"))) {
-					$Obj = new $classname();
-					$Obj->admin_init();
-				}
-				else {
-					CCTM::$errors[] = sprintf( __('Could not locate file for %s field.', CCTM_TXTDOMAIN), "<strong>$shortname</strong>");
-				}
+			if ($FieldObj = CCTM::load_object($shortname, 'fields')) {			
+				$FieldObj->admin_init();
 			}
 		}
 
@@ -1568,19 +1522,18 @@ class CCTM {
 	//------------------------------------------------------------------------------
 	/**
 	 * When given a PHP file name relative to the CCTM_PATH, e.g. '/config/image_search_parameters.php',
-	 * this function will include that file using php include(). However, if the same file exists
+	 * this function will include (or require) that file. However, if the same file exists
 	 * in the same location relative to the wp-content/uploads/cctm directory, THAT version of 
 	 * the file will be used. E.g. calling load_file('test.php') will include 
 	 * wp-content/uploads/cctm/test.php (if it exists); if the file doesn't exist in the uploads
 	 * directory, then we'll look for the file inside the CCTM_PATH, e.g.
 	 * wp-content/plugins/custom-content-type-manager/test.php 
 	 *
-	 * The purpose of this is to let users override certain files by placing their own in a location
-	 * that is *outside* of this plugin's directory so that the user-created files will be safe
+	 * The purpose of this is to let users use their own version of files by placing them in a 
+	 * location *outside* of this plugin's directory so that the user-created files will be safe
 	 * from any overriting or deleting that may occur if the plugin is updated.
-	 *	 
 	 *
-	 * Developers of 3rd party components can supply additional paths $path if they wish to load files
+	 * Developers of 3rd party components can supply $additional_paths if they wish to load files
 	 * in their components: if the $additional_path is supplied, this directory will be searched for tpl in question.
 	 *
 	 * To prevent directory transversing, file names may not contain '..'!
@@ -1656,42 +1609,58 @@ class CCTM {
 	 * it, and returning the object.
 	 *
 	 * @param	string $shortname
-	 * @param	string $object_type: field, filter, validator
-	 * @return	object
+	 * @param	string $type: fields|filters|validators
+	 * @return	mixed obect if found, false if not
 	 */
-	public static function load_object($shortname, $object_type) {
+	public static function load_object($shortname, $type) {
 	
+		$path = '';	
 		$object_classname = self::classname_prefix . $shortname;
 
-		// Load from cache?  You have to still include the parent classes in 
-		// order to work with a serialized object.
-
+		// Already included?
 		if (class_exists($object_classname)) {
 			return new $object_classname();
-		}	
+		}
+
+		// The path to the file is cached?  See get_available_helper_classes()
+		if(isset(self::$data['cache']['helper_classes'][$type][$shortname])) {
+			$path = self::$data['cache']['helper_classes'][$type][$shortname];
+		}
+		// populate the cache and try again
+		else {
+			$classes = self::get_available_helper_classes($type);
+			if(isset($classes[$shortname])) {
+				$path = $classes[$shortname];
+			}
+			else {
+				return false;
+			}
+		}
 		
-		$result = false;
-		
-		switch ($object_type) {
-			case 'field':
+		switch ($type) {
+			case 'fields':				
 				require_once(CCTM_PATH.'/includes/CCTM_FormElement.php');
-				$result = CCTM::load_file('/fields/'.$shortname.'.php', '', 'require_once');
 				break;
-			case 'filter':
+			case 'filters':
 				require_once(CCTM_PATH.'/includes/CCTM_OutputFilter.php');
-				$result = CCTM::load_file('/filters/'.$shortname.'.php', '', 'require_once');
 				break;
-			case 'validator':
+			case 'validators':
 				require_once(CCTM_PATH.'/includes/CCTM_Validator.php');
-				$result = CCTM::load_file('/validators/'.$shortname.'.php', '', 'require_once');
 				break;
 		}
+		// Include the file whose path was cached
+		require_once($path);
 		
-		if (!$result) {
-			return false;
+		if (class_exists($object_classname)) {
+			return new $object_classname();
 		}
-		
-		return new $object_classname();		
+		else {
+			self::$errors['incorrect_classname'] = sprintf( __('Incorrect class name in %s. Expected class name: %s', CCTM_TXTDOMAIN)
+					, "<strong>$path</strong>"
+					, "<strong>$object_classname</strong>"
+				);
+			return false; // bogus file that did not declare the correct class
+		}		
 
 	}
 	
@@ -1761,37 +1730,6 @@ class CCTM {
 
 	//------------------------------------------------------------------------------
 	/**
-	 * Load up a validator PHP class/file into a string via an include statement. MVC type usage here.
-	 *
-	 * @param string  $shortname of the file, e.g. 'number' for number.php
-	 * @return object instantiated instance of the object
-	 */
-	public static function load_validator($shortname) {
-		$validator_class = self::classname_prefix . $shortname;
-		
-		if (!class_exists('CCTM_Validator')) {
-			require_once(CCTM_PATH.'/includes/CCTM_Validator.php');
-		}
-		
-		// Child class?
-		if (class_exists($validator_class) ) {
-			return new $validator_class();
-		}
-		
-		if(!self::load_file('/validators/'.$shortname.'.php')) {
-			// validator not found!
-			die( sprintf(__('Validator not found: %s', CCTM_TXTDOMAIN), $shortname ) );
-		}
-		
-		// Child class again?
-		if (class_exists($validator_class) ) {
-			return new $validator_class();
-		}
-		
-	}
-
-	//------------------------------------------------------------------------------
-	/**
 	 * Load up a PHP file into a string via an include statement. MVC type usage here.
 	 *
 	 * @param string  $filename (relative to the views/ directory)
@@ -1828,7 +1766,10 @@ class CCTM {
 		if (empty($post_type)) {
 			return $orderBy;
 		}
-		if (isset(self::$data['post_type_defs'][$post_type]['custom_orderby']) && !empty(self::$data['post_type_defs'][$post_type]['custom_orderby'])) {
+		
+		if (isset(self::$data['post_type_defs'][$post_type]['custom_orderby']) 
+			&& !empty(self::$data['post_type_defs'][$post_type]['custom_orderby'])) {
+			// die(print_r(self::$data['post_type_defs'][$post_type], true));
 			global $wpdb;
 			$order = self::get_value(self::$data['post_type_defs'][$post_type], 'custom_order', 'ASC');
 			$column = self::$data['post_type_defs'][$post_type]['custom_orderby'];
@@ -1837,10 +1778,10 @@ class CCTM {
 			}
 			// Sort on custom column (would require that custom columns are enabled)
 			else {
-				$orderBy = "{$wpdb->postmeta}.$column $order";
-				$orderBy = "{$wpdb->postmeta}.meta_key $order";			
+				$orderBy = "{$wpdb->postmeta}.meta_value $order";			
 			}
 		}
+
 		return $orderBy;
 	}
 
@@ -1867,7 +1808,6 @@ class CCTM {
 		$field_name = self::get_value($_GET, 'field');
 
 
-
 		// Default Actions for each main menu item (see create_admin_menu)
 		if (empty($action)) {
 			$page = self::get_value($_GET, 'page', 'cctm');
@@ -1877,6 +1817,9 @@ class CCTM {
 				break;
 			case 'cctm_fields': // custom-fields
 				$action = 'list_custom_fields';
+				break;
+			case 'cctm_metaboxes': // custom-metaboxes
+				$action = 'list_metaboxes';
 				break;
 			case 'cctm_settings': // settings
 				$action = 'settings';
@@ -1889,6 +1832,9 @@ class CCTM {
 				break;
 			case 'cctm_info': // info
 				$action = 'info';
+				break;
+			case 'cctm_cache':
+				$action = 'clear_cache';
 				break;
 			}
 		}
@@ -1913,37 +1859,121 @@ class CCTM {
 
 	//------------------------------------------------------------------------------
 	/**
-	 * SYNOPSIS: a simple parsing function for basic templating.
+	 * Our parsing function for basic templating, based on the MODX placeholders
+	 * and output filters
 	 *
-	 * @param boolean if true, will not remove unused [+placeholders+]
-	 *
-	 * with the values and the string will be returned.
-	 * @param string  $tpl:                         a string containing [+placeholders+]
-	 * @param array   $hash:                        an associative array('key' => 'value');
-	 * @param unknown $preserve_unused_placeholders (optional)
-	 * @return string placeholders corresponding to the keys of the hash will be replaced
+	 * @param string  $tpl: a string containing [+placeholders+]
+	 * @param array   $hash: an associative array('key' => 'value') corresponding to the keys of the hash will be replaced
+	 * @param boolean $preserve_unused_placeholders (optional) if true, will not remove unused [+placeholders+]
+	 * @return string parsed text
 	 */
 	public static function parse($tpl, $hash, $preserve_unused_placeholders=false) {
-
-		// Get all placeholders in this tpl
-		$all_placeholders = array_keys($hash);
-		$hash['help'] = '<ul>';
-		foreach ($all_placeholders as $p) {
-			$hash['help'] .= "<li>&#91;+$p+&#93;</li>";
-		}
-		$hash['help'] .= '</ul>';
-
-		foreach ($hash as $key => $value) {
-			if ( !is_array($value) ) {
-				$tpl = str_replace('[+'.$key.'+]', $value, $tpl);
+		if (is_array($hash)) {
+			// Get all placeholders in this tpl
+			$all_placeholders = array_keys($hash);
+			$hash['help'] = '<ul>';
+			foreach ($all_placeholders as $p) {
+				$hash['help'] .= "<li>&#91;+$p+&#93;</li>";
 			}
-		}		
+			$hash['help'] .= '</ul>';
+	
+			// Simple Placeholders
+			foreach ($hash as $key => $value) {
+				if (is_scalar($value)) {
+					$tpl = str_replace('[+'.$key.'+]', $value, $tpl);
+				}
+			}
+			// ADVANCED PLACEHOLDERS, e.g. [+my_field:output_filter==opt1||opt2:output_filter2+]
+			// Check for in-line output filters, e.g. some_id:to_image_tag or post_id:get_post:guid
+			$pattern = preg_quote('[+').'(.*)'.preg_quote('+]');
+			$placeholders = array();
+			preg_match_all('/'.$pattern.'/U', $tpl,$placeholders);
+			foreach($placeholders[1] as $complex_ph) {
+				//die(print_r($placeholders[1],true));
+				$components = explode(':', $complex_ph);
+				// First placeholder would be what the simple placeholder would use
+				// and the first value comes from the original $hash
+				$first = array_shift($components);
+				$value = '';
+				if (isset($hash[$first])) {
+					$value = $hash[$first]; 
+				}
+				elseif($preserve_unused_placeholders) {
+					continue;
+				}
+				
+				// "Components" are the filter==opt chunks
+				foreach($components as $comp) {
+					// does this value exist?
+					$filter_and_opts = explode('==',$comp);
+					// $filter_and_opts[0] = the filter name
+					// $filter_and_opts[1] = comma-sep options (if any)
+					$options = null;
+					if (isset($filter_and_opts[1])) {
+						// if you used alternate glyphs for nested tags, here's where 
+						// you'd convert them... 
+						$filter_and_opts[1] = str_replace('{{', '[+', $filter_and_opts[1]);
+						$filter_and_opts[1] = str_replace('}}', '+]', $filter_and_opts[1]);
+						$options = explode('||',$filter_and_opts[1]);
+						// avoid the array if not needed.
+						if ($options[0] == $filter_and_opts[1]) {
+							$options = $filter_and_opts[1];
+						}
+					}
 
+					$new_value = CCTM::filter($value,$filter_and_opts[0], $options);
+
+					// if we don't get a scalar, we skip that value.
+					if (is_scalar($new_value)) {
+						$value = $new_value;
+					}
+
+				}
+				$tpl = str_replace('[+'.$complex_ph.'+]', $value, $tpl);
+			}
+		}
+		else {
+			if (defined('CCTM_DEBUG')) {			
+				$myFile = CCTM_DEBUG;
+				$fh = fopen($myFile, 'a') or die("can't open file");
+				fwrite($fh, print_r(debug_backtrace(), true));
+				fclose($fh);
+			}		
+		}
+		
 		// Remove any unparsed [+placeholders+]
 		if (!$preserve_unused_placeholders) {
 			$tpl = preg_replace('/\[\+(.*?)\+\]/', '', $tpl);
 		}
 		return $tpl;
+	}
+
+	//------------------------------------------------------------------------------
+	/**
+	 * Custom joining on postmeta table for sorting on custom columns
+	 */
+	public static function posts_join($join) {
+
+		global $wpdb;
+	
+		// We don't want searches
+		if(is_search() ) {
+			return $join;
+		}
+		
+		$post_type = CCTM::get_value($_GET, 'post_type');
+		if (empty($post_type)) {
+			return $join;
+		}
+		if (isset(CCTM::$data['post_type_defs'][$post_type]['custom_orderby']) && !empty(CCTM::$data['post_type_defs'][$post_type]['custom_orderby'])) {
+			$column = CCTM::$data['post_type_defs'][$post_type]['custom_orderby'];
+			// Req'd to sort on custom column
+			if (!in_array($column, CCTM::$reserved_field_names)) {
+				$join .= $wpdb->prepare(" LEFT JOIN {$wpdb->postmeta} ON  {$wpdb->posts}.ID = {$wpdb->postmeta}.post_id AND {$wpdb->postmeta}.meta_key = %s", $column);
+			}
+		}
+			
+		return $join;	
 	}
 
 
@@ -2030,7 +2060,7 @@ class CCTM {
 	 *
 	 * @param string  the CCTM admin page to redirect to.
 	 * @return none; this prints the result.
-	 * @param unknown $url
+	 * @param string $url
 	 */
 	public static function redirect($url) {
 		print '<script type="text/javascript">window.location.replace("'.get_admin_url(false, 'admin.php').$url.'");</script>';
@@ -2083,12 +2113,12 @@ class CCTM {
 	 * ) );
 	 */
 	public static function register_custom_post_types() {
-
+//return;
 		$post_type_defs = self::get_post_type_defs();
 
 		foreach ($post_type_defs as $post_type => $def) {
 			$def = self::_prepare_post_type_def($def);
-
+			
 			if ( isset($def['is_active'])
 				&& !empty($def['is_active'])
 				&& !in_array($post_type, self::$built_in_post_types)
@@ -2144,6 +2174,12 @@ class CCTM {
 		//  http://code.google.com/p/wordpress-custom-content-type-manager/issues/detail?id=112
 		//  http://code.google.com/p/wordpress-custom-content-type-manager/issues/detail?id=360
 
+		// 	http://code.google.com/p/wordpress-custom-content-type-manager/issues/detail?id=458
+		if ( substr($_SERVER['SCRIPT_NAME'], strrpos($_SERVER['SCRIPT_NAME'], '/')+1) == 'edit.php' 
+			&& self::get_value($_GET, 'post_type')) {
+			return $query;
+		}
+		
 		// Control what shows up in the RSS feed
 		if (isset($query['feed'])) {
 			$args = array( 'public' => true); // array('exclude_from_search'=>false); // ugh. WP has bad support here.
@@ -2151,8 +2187,8 @@ class CCTM {
 			unset($post_types['revision']);
 			unset($post_types['nav_menu_item']);
 			
-			if (defined('CCTM_DEBUG') && CCTM_DEBUG == true) {			
-				$myFile = "/tmp/cctm.txt";
+			if (defined('CCTM_DEBUG')) {			
+				$myFile = CCTM_DEBUG;
 				$fh = fopen($myFile, 'a') or die("can't open file");
 				fwrite($fh, 'Request post-types:'. print_r($post_types, true));
 				fclose($fh);
@@ -2170,11 +2206,10 @@ class CCTM {
 					unset($post_types[$pt]);
 				}
 			}
-			
 			$query['post_type'] = $post_types;
 
 		}
-		// Handle Archives
+		// Handle Year/Month Archives
 		elseif (isset($query['year']) && isset($query['monthnum'])) {
 			// Get only public, custom post types
 			$args = array( 'public' => true, '_builtin' => false );
@@ -2194,7 +2229,44 @@ class CCTM {
 	
 
 		}
+		// Ensure category pages show all available post-types
+		elseif ((isset($query['category_name']) && !empty($query['category_name'])) 
+			|| (isset($query['cat']) && !empty($query['cat']))) {
+			if (!isset($query['page'])) { // <-- on a true category page, this won't be set
+				$args = array( 'public' => true, '_builtin' => false );
+				$public_post_types = get_post_types( $args );
+	
+				// Only posts get categories, not pages, so our first post-type is "post"...  has_archive is not enabled.
+				$search_me_post_types = array('post');
 		
+				foreach (self::$data['post_type_defs'] as $post_type => $def) {
+					if ( isset($def['taxonomies']) && is_array($def['taxonomies']) && in_array('category', $def['taxonomies'])) {
+						$search_me_post_types[] = $post_type;
+					}
+				}
+						
+				$query['post_type'] = $search_me_post_types;
+			}
+		}
+		// Handle tag pages
+		elseif (isset($query['tag'])) {
+			$args = array( 'public' => true, '_builtin' => false );
+			$public_post_types = get_post_types( $args );
+
+			// Only posts get archives, not pages, so our first archivable post-type is "post"...
+			$search_me_post_types = array('post');
+	
+			// check which have 'has_archive' enabled.
+			foreach (self::$data['post_type_defs'] as $post_type => $def) {
+				if ( isset($def['taxonomies']) && is_array($def['taxonomies']) && in_array('post_tag', $def['taxonomies'])) {
+					$search_me_post_types[] = $post_type;
+				}
+			}
+	
+			$query['post_type'] = $search_me_post_types;		
+		}
+
+	
 		return $query;
 	}
 
@@ -2204,6 +2276,11 @@ class CCTM {
 	 * Adds custom post-types to dashboard "Right Now" widget
 	 */
 	public static function right_now_widget() {
+	
+		if (!self::get_setting('enable_right_now')) {
+			return;
+		}
+		
 		$args = array(
 			'public' => true ,
 			'_builtin' => false
@@ -2214,6 +2291,11 @@ class CCTM {
 		$post_types = get_post_types( $args , $output , $operator );
 
 		foreach ( $post_types as $post_type ) {
+			//die(print_r($post_type, true));
+			if (isset(self::$data['post_type_defs'][$post_type->name]['cctm_enable_right_now']) && !self::$data['post_type_defs'][$post_type->name]['cctm_enable_right_now']) {
+				continue;
+			}
+			
 			$num_posts = wp_count_posts( $post_type->name );
 			$num = number_format_i18n( $num_posts->publish );
 			$text = _n( $post_type->labels->singular_name, $post_type->labels->name , intval( $num_posts->publish ) );
@@ -2255,12 +2337,25 @@ class CCTM {
 				unset($post_types['nav_menu_item']);
 //				unset($post_types['page']); // TO-DO: configure this?
 				foreach ($post_types as $pt) {
+/*
 					// we only exclude it if it was specifically excluded.
 					if (isset(self::$data['post_type_defs'][$pt]['include_in_rss']) && !self::$data['post_type_defs'][$pt]['include_in_rss']) {
 						unset($post_types[$pt]);
 					}
 					elseif('page' == $pt) {
 						unset($post_types[$pt]);
+					}
+*/
+					// See http://code.google.com/p/wordpress-custom-content-type-manager/issues/detail?id=412
+					if('page' == $pt && self::get_setting('pages_in_rss_feed')) {
+						// Leave pages in.
+					}
+					elseif($pt == 'post') {
+						// Do nothing.  Posts are always included in the RSS feed.
+					}
+					// Exclude it if it was specifically excluded.
+					elseif (!isset($pt['include_in_rss']) || !$pt['include_in_rss']) {
+						unset($post_types[$key]);
 					}
 				}
 				// The format of the array of $post_types is array('post' => 'post', 'page' => 'page')
@@ -2278,8 +2373,8 @@ class CCTM {
 			}
 		}
 		
-		if (defined('CCTM_DEBUG') && CCTM_DEBUG == true) {			
-			$myFile = "/tmp/cctm.txt";
+		if (defined('CCTM_DEBUG')) {			
+			$myFile = CCTM_DEBUG;
 			$fh = fopen($myFile, 'a') or die("can't open file");
 			fwrite($fh, print_r($query->get('post_type'), true));
 			fclose($fh);
@@ -2323,7 +2418,7 @@ class CCTM {
 	 * http://algorytmy.pl/doc/php/function.stripslashes.php
 	 *
 	 * @param array   possibly nested
-	 * @param unknown $value
+	 * @param mixed $value
 	 * @return array clensed of slashes
 	 */
 	public static function stripslashes_deep($value) {

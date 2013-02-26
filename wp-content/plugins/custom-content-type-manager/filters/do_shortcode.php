@@ -13,17 +13,39 @@ class CCTM_do_shortcode extends CCTM_OutputFilter {
 	/**
 	 * Apply the filter.
 	 *
-	 * @param 	string 	input
+	 * @param 	mixed 	input
 	 * @param	boolean	options: true, bypass wpautop(). Default: false
-	 * @return string
+	 * @return mixed -- will match input type of input
 	 */
 	public function filter($input, $options=null) {
-		if ($options) {
-			do_shortcode($input);
+		
+		$input = $this->to_array($input);
+
+		if ($this->is_array_input) {
+			foreach ($input as &$item) {		
+				if ($options) {
+					$input = do_shortcode($input);
+				}
+				else {
+					$input = do_shortcode(wpautop($input));
+				}
+			}
 		}
 		else {
-			return do_shortcode(wpautop($input));
+			if (isset($input[0])) {
+				if ($options) {
+					$input = do_shortcode($input[0]);
+				}
+				else {
+					$input = do_shortcode(wpautop($input[0]));
+				}
+			}
+			else {
+				return '';
+			}
 		}
+		
+		return $input;
 	}
 
 
@@ -40,7 +62,7 @@ class CCTM_do_shortcode extends CCTM_OutputFilter {
 	 *
 	 * @return string 	a code sample 
 	 */
-	public function get_example($fieldname='my_field',$fieldtype) {
+	public function get_example($fieldname='my_field',$fieldtype,$is_repeatable=false) {
 		return "<?php print_custom_field('$fieldname:do_shortcode'); ?>";
 	}
 

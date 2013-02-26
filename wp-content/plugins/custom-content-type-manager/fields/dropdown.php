@@ -55,8 +55,7 @@ class CCTM_dropdown extends CCTM_FormElement
 	 * @return string text description
 	 */
 	public function get_description() {
-		return __('Dropdown fields implement a <select> element which lets you select a single item.
-			"Extra" parameters, e.g. "alt" can be specified in the definition.', CCTM_TXTDOMAIN);
+		return __('Dropdown fields implement a <select> element which lets you select a single item. "Extra" parameters, e.g. "alt" can be specified in the definition.', CCTM_TXTDOMAIN);
 	}
 
 
@@ -148,6 +147,56 @@ class CCTM_dropdown extends CCTM_FormElement
 			$this->all_options .= CCTM::parse($optiontpl, $hash);
 		}
 		
+		// Handle SQL queries
+		if ($this->is_sql) {
+			if (empty($this->alternate_input)) {
+				return __('Alternate input must not be empty if SQL box is checked.', CCTM_TXTDOMAIN);
+			}
+			else {
+				global $wpdb;
+				global $table_prefix;
+				$wpdb->hide_errors();
+				$query = CCTM::parse($this->alternate_input, array('table_prefix'=>$table_prefix));
+				//return $query;
+				$results = $wpdb->get_results($query, ARRAY_N);
+				if ($wpdb->last_error) {
+					return $wpdb->last_error;
+				}
+				$options = array();
+				$values = array();
+				foreach ($results as $r_i => $r) {
+					$options[$r_i] = $r[0];
+					if (isset($r[1])) {
+						$values[$r_i] = $r[1];
+					}
+					else {
+						$values[$r_i] = $r[0];
+					}
+				}
+				$this->set_prop('options', $options);
+				$this->set_prop('values', $values);
+			}
+		}
+		// Bulk input
+		elseif (!$this->is_sql && !empty($this->alternate_input)) {
+			$options = array();
+			$values = array();
+			$mixed = explode("\n",$this->alternate_input);
+			foreach($mixed as $m_i => $m) {
+				$line = explode('||',$m);
+				$options[$m_i] = trim($line[0]);
+				if (isset($line[1])) {
+					$values[$m_i] = trim($line[1]);
+				}
+				else {
+					$values[$m_i] = trim($line[0]);
+				}
+			}
+			$this->set_prop('options', $options);
+			$this->set_prop('values', $values);			
+		}
+
+		
 		$opt_cnt = count($this->options);
 
 
@@ -210,21 +259,25 @@ class CCTM_dropdown extends CCTM_FormElement
 	public function get_edit_field_definition($def) {
 
 		// Standard
-		$out = $this->format_standard_fields($def);
+		$out = $this->format_standard_fields($def,false);
 
 		$is_checked = '';
+		$is_sql_checked = '';
 		$readonly_str = ' readonly="readonly"';
 		if (isset($def['use_key_values']) && $def['use_key_values']) {
 			$is_checked = 'checked="checked"';
 			$readonly_str = '';
 		}
-
+		if (isset($def['is_sql']) && $def['is_sql']) {
+			$is_sql_checked = 'checked="checked"';
+		}
 		// Options
 		$out .= '
 			<div class="postbox">
 				<div class="handlediv" title="Click to toggle"><br /></div>
 				<h3 class="hndle"><span>'. __('Options', CCTM_TXTDOMAIN).'</span></h3>
-				<div class="inside">';
+				<div class="inside">
+					<table><tr><td width="600" style="vertical-align:top">';
 
 		// Use Key => Value Pairs?  (if not, the simple usage is simple options)
 		$out .= '<div class="'.self::wrapper_css_class .'" id="use_key_values_wrapper">
@@ -233,6 +286,7 @@ class CCTM_dropdown extends CCTM_FormElement
 			'</label>
 				 <br />
 				 <input type="checkbox" name="use_key_values" class="cctm_checkbox" id="use_key_values" value="1" onclick="javascript:toggle_readonly();" '. $is_checked.'/> <span>'.$this->descriptions['use_key_values'].'</span>
+
 			 	</div>';
 
 		// OPTIONS
@@ -251,20 +305,29 @@ class CCTM_dropdown extends CCTM_FormElement
 		$hash['set_as_default'] = __('Set as Default', CCTM_TXTDOMAIN);
 
 		$tpl = '
+			<script type="text/javascript">
+				jQuery(function() {
+					jQuery( "#dropdown_options2" ).sortable();
+					// jQuery( "#dropdown_options2" ).disableSelection();
+				});			
+			</script>
 			<table id="dropdown_options">
 				<thead>
+				<td scope="col" id="sorter" class=""  style="">&nbsp;</td>	
 				<td width="200"><label for="options" class="cctm_label cctm_select_label" id="cctm_label_options">[+options+]</label></td>
 				<td width="200"><label for="options" class="cctm_label cctm_select_label" id="cctm_label_options">[+values+]</label></td>
 				<td>
 				 <span class="button" onclick="javascript:append_dropdown_option(\'dropdown_options\',\'[+delete+]\',\'[+set_as_default+]\',\'[+option_cnt+]\');">[+add_option+]</span>
 				</td>
-				</thead>';
+				</thead>
+				<tbody id="dropdown_options2">';
 
 		$out .= CCTM::parse($tpl, $hash);
 
 		// this html should match up with the js html in dropdown.js
 		$option_html = '
 			<tr id="%s">
+				<td><span class="ui-icon ui-icon-arrowthick-2-n-s"></span></td>
 				<td><input type="text" name="options[]" id="option_%s" value="%s"/></td>
 				<td><input type="text" name="values[]" id="value_%s" value="%s" class="possibly_gray"'.$readonly_str.'/></td>
 				<td><span class="button" onclick="javascript:remove_html(\'%s\');">%s</span>
@@ -302,7 +365,9 @@ class CCTM_dropdown extends CCTM_FormElement
 			}
 		}
 
-		$out .= '</table>'; // close id="dropdown_options"
+		$out .= '
+			</tbody>
+		</table>'; // close id="dropdown_options"
 
 		// Display as Radio Button or as Dropdown?
 		$out .= '<div class="'.self::wrapper_css_class .'" id="display_type_wrapper">
@@ -320,7 +385,31 @@ class CCTM_dropdown extends CCTM_FormElement
 			'</label><br />
 			 	</div>';
 			 	
-		$out .= '</div><!-- /inside -->
+		// Secondary Input options
+		$out .= '</td><td style="vertical-align:top">
+			<label class="cctm_label cctm_textarea_label" id="advanced_label">'
+			. __('Alternate Input', CCTM_TXTDOMAIN) .
+			'</label>
+			<span>'.__('Use this input if you want to options in bulk. 
+				Separate options and values using double-pipes "||" with the visible option on the left, the corresponding value
+				to be stored on the right (if present).  You may also enter a valid MySQL query. This field overrides 
+				other inputs!', CCTM_TXTDOMAIN).'</span><br/>
+			<textarea name="alternate_input" id="alternate_input" cols="50" rows="10">'.
+			CCTM::get_value($def,'alternate_input')
+			.'</textarea>';
+
+		// Execute as MySQL?
+		$out .= '<div class="'.self::wrapper_css_class .'" id="is_sql_wrapper">
+
+				 <input type="checkbox" name="is_sql" class="cctm_checkbox" id="is_sql" value="1"'. $is_sql_checked.'/> 				 <label for="is_sql" class="cctm_label cctm_checkbox_label" id="is_sql_label">'
+				 .__('Execute as a MySQL query?', CCTM_TXTDOMAIN).'</label> <span>'.__('Select up to 2 columns: the 1st column will be the visible label and the 2nd column (if present) will represent the value stored in the database.
+				 	Use [+table_prefix+] instead of hard-coding your WordPress database table prefix.',CCTM_TXTDOMAIN).'</span>
+			 	</div>';
+			
+			
+		$out .= '
+					</td></tr></table>		
+				</div><!-- /inside -->
 			</div><!-- /postbox -->';
 
 		// Validations / Required
@@ -332,7 +421,23 @@ class CCTM_dropdown extends CCTM_FormElement
 		return $out;
 	}
 
-
+    //------------------------------------------------------------------------------
+    /**
+     * The option desc. here is simply a list of the options OR the SQL query alt.
+     */
+    public function get_options_desc() {
+        if (!empty($this->props['options'])) {
+            $options = implode(', ',$this->props['options']);
+        }
+        else {
+            $options = $this->props['alternate_input'];        
+        }
+        if (strlen($options) > 50) {
+            $options = substr($options, 0, 50). '&hellip;';
+        }
+        return $options;
+    }
+    
 	//------------------------------------------------------------------------------
 	/**
 	 * Validate and sanitize any submitted data. Used when editing the definition for
@@ -346,8 +451,8 @@ class CCTM_dropdown extends CCTM_FormElement
 	 */
 	public function save_definition_filter($posted_data) {
 		$posted_data = parent::save_definition_filter($posted_data);
-		if ( empty($posted_data['options']) ) {
-			$this->errors['options'][] = __('At least one option is required.', CCTM_TXTDOMAIN);
+		if (empty($posted_data['alternate_input']) && empty($posted_data['options'])) {
+			$this->errors['options'][] = __('At least one option or alternate input is required.', CCTM_TXTDOMAIN);
 		}
 		return $posted_data; // filtered data
 	}

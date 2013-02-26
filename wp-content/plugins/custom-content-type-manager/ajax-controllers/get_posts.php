@@ -1,10 +1,11 @@
 <?php
 /*------------------------------------------------------------------------------
-This controller displays a selection of posts for the user to select, i.e. 
-the "Post Selector"
+This controller displays a selection of posts in a lightbox/thickbox for the 
+user to select when they arecreating or editing a post/page, 
+i.e. the "Post Selector"
 
-The thickbox appears (for example) when you create or edit a post that uses a relation,
-image, or media field.
+The thickbox appears (for example) when you create or edit a post that uses a 
+relation, image, or media field.
 ------------------------------------------------------------------------------*/
 if (!defined('CCTM_PATH')) exit('No direct script access allowed');
 if (!current_user_can('edit_posts')) die('You do not have permission to do that.');
@@ -85,6 +86,7 @@ if (isset($_POST['search_parameters'])) {
 $possible_configs = array();
 $possible_configs[] = '/config/post_selector/'.$fieldname.'.php'; 	// e.g. my_field.php
 $possible_configs[] = '/config/post_selector/_'.$def['type'].'.php'; 		// e.g. _image.php
+$possible_configs[] = '/config/post_selector/_relation.php'; 		// default
 
 CCTM::$post_selector = array();
 if (!CCTM::load_file($possible_configs)) {
@@ -133,6 +135,20 @@ if (is_numeric($d['page_number']) && $d['page_number'] > 1) {
 	$args['offset'] = ($d['page_number'] - 1) * CCTM::$post_selector['limit'];
 }
 
+// Set pagination tpls
+$tpls = array (
+	'firstTpl'		=> '<span class="linklike" onclick="javascript:change_page(1);">&laquo; First</span> &nbsp;',
+	'lastTpl' 		=> '&nbsp;<span class="linklike" onclick="javascript:change_page([+page_number+]);" >Last &raquo;</span>',
+	'prevTpl' 		=> '<span class="linklike" onclick="javascript:change_page([+page_number+]);">&lsaquo; Prev.</span>&nbsp;',
+	'nextTpl' 		=> '&nbsp;<span class="linklike" onclick="javascript:change_page([+page_number+]);">Next &rsaquo;</span>',
+	'currentPageTpl'=> '&nbsp;<span class="post_selector_pagination_active_page">[+page_number+]</span>&nbsp;',
+	'pageTpl' 		=> '&nbsp;<span class="linklike" title="[+page_number+]" onclick="javascript:change_page([+page_number+]);">[+page_number+]</span>&nbsp;',
+	'outerTpl' 		=> '<div id="pagination">[+content+]<br/>
+		Page [+current_page+] of [+page_count+]<br/>
+	</div>',
+);
+$Q->set_tpls($tpls);
+
 // Get the results
 $results = $Q->get_posts($args);
 
@@ -146,7 +162,8 @@ $search_form_tpl = CCTM::load_tpl(
 $Form->set_tpl($search_form_tpl);
 $Form->set_name_prefix(''); // blank out the prefixes
 $Form->set_id_prefix('');
-$search_by = array('search_term','yearmonth','post_type'); 
+// $search_by = array('search_term','yearmonth','post_type'); 
+$search_by = true; // all options available if the tpl passes them
 $d['search_form'] = $Form->generate($search_by, $args);
 
 
@@ -159,13 +176,13 @@ if (isset($def['is_repeatable']) && $def['is_repeatable'] == 1) {
 	$item_tpl = CCTM::load_tpl(
 		array('post_selector/items/'.$fieldname.'.tpl'
 			, 'post_selector/items/_'.$def['type'].'_multi.tpl'
-			, 'post_selector/items/_default.tpl'
+			, 'post_selector/items/_relation_multi.tpl'
 		)
 	);
 	$wrapper_tpl = CCTM::load_tpl(
 		array('post_selector/wrappers/'.$fieldname.'.tpl'
 			, 'post_selector/wrappers/_'.$def['type'].'_multi.tpl'
-			, 'post_selector/wrappers/_default.tpl'
+			, 'post_selector/wrappers/_relation_multi.tpl'
 		)
 	);
 }

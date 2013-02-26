@@ -12,14 +12,14 @@ class SimpleTaxonomy_Client {
 	 * @return void
 	 * @author Amaury Balmer
 	 */
-	function simpletaxonomy_client() {
-		add_action( 'init', array(&$this, 'initTaxonomies'), 1 );
+	public function __construct() {
+		add_action( 'init', array(__CLASS__, 'init'), 1 );
 		
-		add_filter( 'the_excerpt', array(&$this, 'excerptFilter'), 10, 1 );
-		add_filter( 'the_content', array(&$this, 'contentFilter'), 10, 1 );
+		add_filter( 'the_excerpt', array(__CLASS__, 'the_excerpt'), 10, 1 );
+		add_filter( 'the_content', array(__CLASS__, 'the_content'), 10, 1 );
 		
-		add_action( 'template_redirect', array(&$this, 'fixEmptyTaxonomyView') );
-		add_filter( 'wp_title', array(&$this, 'fixTermTitle'), 10, 2 );
+		add_action( 'template_redirect', array(__CLASS__, 'template_redirect') );
+		add_filter( 'wp_title', array(__CLASS__, 'wp_title'), 10, 2 );
 	}
 	
 	/**
@@ -28,46 +28,50 @@ class SimpleTaxonomy_Client {
 	 * @return boolean
 	 * @author Amaury Balmer
 	 */
-	function initTaxonomies() {
+	public static function init() {
 		$options = get_option( STAXO_OPTION );
 		if ( is_array( $options['taxonomies'] ) ) {
 			foreach( (array) $options['taxonomies'] as $taxonomy ) {
-				
-				// Empty query_private ? use name
-				$taxonomy['query_var'] = trim($taxonomy['query_var']);
-				if ( empty($taxonomy['query_var']) ) {
-					$taxonomy['query_var'] = $taxonomy['name'];
-				}
-				
-				// Rewrite
-				if ( $taxonomy['rewrite'] == 'true' ) {
-					$taxonomy['rewrite'] = array( 'slug' => $taxonomy['query_var'], 'with_front' => true, 'hierarchical' => false );
-				}
-				
-				// Clean labels
-				foreach( $taxonomy['labels'] as $k => $v ) {
-					$taxonomy['labels'][$k] = stripslashes($v);
- 				}
-				
-				register_taxonomy( $taxonomy['name'], $taxonomy['objects'],
-					array(
-						'hierarchical' 			=> $taxonomy['hierarchical'],
-						'update_count_callback' => '_update_post_term_count', // use default WP callback
-						'rewrite' 				=> (boolean) $taxonomy['rewrite'],
-						'query_var' 			=> $taxonomy['query_var'],
-						'public' 				=> (boolean) $taxonomy['public'],
-						'show_ui' 				=> (boolean) $taxonomy['show_ui'],
-						'show_tagcloud' 		=> (boolean) $taxonomy['show_tagcloud'],
-						'labels' 				=> $taxonomy['labels'],
-						'capabilities' 			=> $taxonomy['capabilities'],
-						'show_in_nav_menus' 	=> (boolean) $taxonomy['show_in_nav_menus']
-					)
-				);
-				
+				register_taxonomy( $taxonomy['name'], $taxonomy['objects'], self::prepareArgs( $taxonomy ) );
 			}
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Prepare ARGS from DB to function API
+	 */
+	public static function prepareArgs( $taxonomy ) {
+		// Empty query_private ? use name
+		$taxonomy['query_var'] = trim($taxonomy['query_var']);
+		if ( empty($taxonomy['query_var']) ) {
+			$taxonomy['query_var'] = $taxonomy['name'];
+		}
+		
+		// Rewrite
+		$taxonomy['rewrite'] = (boolean) $taxonomy['rewrite'];
+		if ( $taxonomy['rewrite'] == true ) {
+			$taxonomy['rewrite'] = array( 'slug' => $taxonomy['query_var'], 'with_front' => true, 'hierarchical' => false );
+		}
+		
+		// Clean labels
+		foreach( $taxonomy['labels'] as $k => $v ) {
+			$taxonomy['labels'][$k] = stripslashes($v);
+		}
+		
+		return array(
+			'hierarchical' 			=> $taxonomy['hierarchical'],
+			'update_count_callback' => '_update_post_term_count', // use default WP callback
+			'rewrite' 				=> $taxonomy['rewrite'],
+			'query_var' 			=> $taxonomy['query_var'],
+			'public' 				=> (boolean) $taxonomy['public'],
+			'show_ui' 				=> (boolean) $taxonomy['show_ui'],
+			'show_tagcloud' 		=> (boolean) $taxonomy['show_tagcloud'],
+			'labels' 				=> $taxonomy['labels'],
+			'capabilities' 			=> $taxonomy['capabilities'],
+			'show_in_nav_menus' 	=> (boolean) $taxonomy['show_in_nav_menus']
+		);
 	}
 	
 	/**
@@ -76,7 +80,7 @@ class SimpleTaxonomy_Client {
 	 * @return void
 	 * @author Amaury Balmer
 	 */
-	function fixEmptyTaxonomyView() {
+	public static function template_redirect() {
 		global $wp_query;
 		
 		if ( isset($wp_query->query_vars['term']) && isset($wp_query->query_vars['taxonomy']) && isset($wp_query->query_vars[$wp_query->query_vars['taxonomy']]) ) {
@@ -93,7 +97,7 @@ class SimpleTaxonomy_Client {
 	 * @return string
 	 * @author Amaury Balmer
 	 */
-	function fixTermTitle( $title = '', $sep = '' ) {
+	public static function wp_title( $title = '', $sep = '' ) {
 		global $wp_query;
 		
 		// If there's a taxonomy
@@ -127,7 +131,7 @@ class SimpleTaxonomy_Client {
 	 * @return string
 	 * @author Amaury Balmer
 	 */
-	function taxonomyFilter( $content, $type ) {
+	public static function taxonomyFilter( $content, $type ) {
 		global $post;
 		
 		$output = '';
@@ -153,7 +157,7 @@ class SimpleTaxonomy_Client {
 		}
 		
 		if ( !empty($output) ) {
-			$content .= '<div id="simple-taxonomy">'."\n".$output."\n".'</div>'."\n";
+			$content .= '<div class="simple-taxonomy">'."\n".$output."\n".'</div>'."\n";
 		}
 		
 		return $content;
@@ -166,8 +170,8 @@ class SimpleTaxonomy_Client {
 	 * @return string
 	 * @author Amaury Balmer
 	 */
-	function contentFilter( $content = '' ) {
-		return $this->taxonomyFilter( $content, 'content' );
+	public static function the_content( $content = '' ) {
+		return self::taxonomyFilter( $content, 'content' );
 	}
 	
 	/**
@@ -177,8 +181,7 @@ class SimpleTaxonomy_Client {
 	 * @return string
 	 * @author Amaury Balmer
 	 */
-	function excerptFilter( $content = '' ) {
-		return $this->taxonomyFilter( $content, 'excerpt' );
+	public static function the_excerpt( $content = '' ) {
+		return self::taxonomyFilter( $content, 'excerpt' );
 	}
 }
-?>

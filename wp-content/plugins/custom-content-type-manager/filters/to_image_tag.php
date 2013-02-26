@@ -2,7 +2,8 @@
 /**
  * @package CCTM_OutputFilter
  * 
- * Converts input (usually a JSON encoded string) into an array
+ * Converts input (usually a JSON encoded string) into an array of image attributes
+ * via the wp_get_attachment_image() function.
  */
 
 class CCTM_to_image_tag extends CCTM_OutputFilter {
@@ -17,6 +18,9 @@ class CCTM_to_image_tag extends CCTM_OutputFilter {
 	public function filter($input, $options='full') {
 		$inputs = $this->to_array($input);
 		$output = '';
+		if (!is_scalar($options)) {
+			$options = 'full'; // avoid arrays!
+		}
 		foreach ($inputs as $input) {
 			$output .= wp_get_attachment_image($input, $options);
 		}
@@ -37,7 +41,7 @@ class CCTM_to_image_tag extends CCTM_OutputFilter {
 	 *
 	 * @return string 	a code sample 
 	 */
-	public function get_example($fieldname='my_field',$fieldtype) {
+	public function get_example($fieldname='my_field',$fieldtype,$is_repeatable=false) {
 		return '<?php print_custom_field(\''.$fieldname.':to_image_tag\'); ?>';
 	}
 

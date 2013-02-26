@@ -6,7 +6,7 @@
  * me throwing a bone to template editors and creators.
  *
  * I'm using a tpl and my parse() function because I have to print out sample PHP
- * code and it's too much of a pain in the ass to include PHP without it executing.
+ * code... otherwise it's too much of a pain to include PHP without it executing.
  *
  * @param string  $post_type
  * @package
@@ -32,7 +32,7 @@ if (!CCTM_PostTypeDef::is_existing_post_type($post_type) ) {
 	return;
 }
 
-$current_theme_name = get_current_theme();
+$current_theme_name = wp_get_theme();
 $current_theme_path = get_stylesheet_directory();
 
 $hash = array();
@@ -140,9 +140,13 @@ if ( isset(self::$data['post_type_defs'][$post_type]['custom_fields'])
 			// Show an example of the Output Filter
 			if ($filter_included && $filter != 'raw') {				
 				$OutputFilter = new $filter_class();
+				$is_repeatable = false;
+				if (isset(self::$data['custom_field_defs'][$cf]['is_repeatable'])) {
+					$is_repeatable = self::$data['custom_field_defs'][$cf]['is_repeatable'];
+				}
 				$custom_fields_str .= sprintf("\t\t<strong>%s:</strong> %s<br />\n"
 					, self::$data['custom_field_defs'][$cf]['label']
-					, $OutputFilter->get_example(self::$data['custom_field_defs'][$cf]['name'], self::$data['custom_field_defs'][$cf]['type'])
+					, $OutputFilter->get_example(self::$data['custom_field_defs'][$cf]['name'], self::$data['custom_field_defs'][$cf]['type'], $is_repeatable)
 				);
 			}
 			// Generic custom field usage
@@ -165,7 +169,7 @@ $hash['built_in_fields'] = $builtin_fields_str;
 $hash['custom_fields'] = $custom_fields_str;
 $hash['comments'] = $comments_str;
 
-$data['single_page_sample_code'] = self::parse($tpl, $hash, true);
+$data['single_page_sample_code'] = CCTM::parse($tpl, $hash, true);
 //die('d.x.x.');
 // include CCTM_PATH.'/views/sample_template.php';
 $data['content'] = CCTM::load_view('sample_template.php', $data);

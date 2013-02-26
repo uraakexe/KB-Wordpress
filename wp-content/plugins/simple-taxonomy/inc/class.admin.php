@@ -1,13 +1,7 @@
 <?php
 class SimpleTaxonomy_Admin {
-	private $taxonomy_fields = array();
-	
+	const admin_slug = 'simple-taxonomy-settings';
 	private $admin_url 	= '';
-	private $admin_slug = 'simple-taxonomy-settings';
-	
-	// Error management
-	private $message = '';
-	private $status  = '';
 	
 	/**
 	 * Constructor
@@ -15,58 +9,18 @@ class SimpleTaxonomy_Admin {
 	 * @return void
 	 * @author Amaury Balmer
 	 */
-	function SimpleTaxonomy_Admin() {
-		$this->taxonomy_fields = array( 
-			'name' 			=> '',
-			'objects' 		=> array(),
-			'update_count_callback' => '',
-			'hierarchical' 	=> 1, 
-			'rewrite' 		=> 1,
-			'query_var' 	=> '',
-			'show_ui' 		=> 1,
-			'show_tagcloud' => 1,
-			'show_in_nav_menus' => 1,
-			'labels' 		=> array(
-								'name' 							=> _x( 'Post Terms', 'taxonomy general name', 'simple-taxonomy' ),
-								'singular_name' 				=> _x( 'Post Term', 'taxonomy singular name', 'simple-taxonomy' ),
-								'search_items' 					=> __( 'Search Terms', 'simple-taxonomy' ),
-								'popular_items' 				=> __( 'Popular Terms', 'simple-taxonomy' ),
-								'all_items' 					=> __( 'All Terms', 'simple-taxonomy' ),
-								'parent_item' 					=> __( 'Parent Term', 'simple-taxonomy' ),
-								'parent_item_colon' 			=> __( 'Parent Term:', 'simple-taxonomy' ),
-								'edit_item' 					=> __( 'Edit Term', 'simple-taxonomy' ),
-								'update_item' 					=> __( 'Update Term', 'simple-taxonomy' ),
-								'add_new_item' 					=> __( 'Add New Term', 'simple-taxonomy' ),
-								'new_item_name' 				=> __( 'New Term Name', 'simple-taxonomy' ),
-								'separate_items_with_commas' 	=> __( 'Separate terms with commas', 'simple-taxonomy' ),
-								'add_or_remove_items' 			=> __( 'Add or remove terms', 'simple-taxonomy' ),
-								'choose_from_most_used' 		=> __( 'Choose from the most used terms', 'simple-taxonomy' )
-							),
-			'capabilities' 	=> array(
-								'manage_terms' => 'manage_categories',
-								'edit_terms'   => 'manage_categories',
-								'delete_terms' => 'manage_categories',
-								'assign_terms' => 'edit_posts'
-							),
-			'public' 		=> 1,
-			// Specific to plugin
-			'objects'		=> array(),
-			'metabox' 		=> 'default',
-			'auto' 			=> 'none'
-		);
-		$this->admin_url = admin_url( 'options-general.php?page='.$this->admin_slug );
-		
+	public function __construct() {
 		// Register hooks
-		add_action( 'admin_init', array(&$this, 'initStyleScript') );
-		add_action( 'admin_init', array(&$this, 'checkAdminPost') );
-		add_action( 'admin_menu', array(&$this, 'addMenu') );
-		add_action( 'activity_box_end', array(&$this, 'addTaxoDashboard') );
+		// add_action( 'admin_init', array(__CLASS__, 'initStyleScript') );
+		add_action( 'activity_box_end', array(__CLASS__, 'activity_box_end') );
+		add_action( 'admin_init', array(__CLASS__, 'admin_init') );
+		add_action( 'admin_menu', array(__CLASS__, 'admin_menu') );
 	}
 	
 	/**
 	 * Add custom taxo on dashboard
 	 */
-	function addTaxoDashboard() {
+	public static function activity_box_end() {
 		$options = get_option( STAXO_OPTION );
 		if ( !is_array( $options['taxonomies'] ) )
 			return false;
@@ -101,13 +55,15 @@ class SimpleTaxonomy_Admin {
 	 * @return void
 	 * @author Amaury Balmer
 	 */
-	function initStyleScript() {
+	/*
+	public static function initStyleScript() {
 		global $pagenow;
 		
 		if ( in_array( $pagenow, array('post.php', 'post-new.php') ) ) {
 			wp_enqueue_style( 'simple-custom-types', STAXO_URL.'/ressources/admin.css', array(), STAXO_VERSION );
 		}
 	}
+	*/
 	
 	/**
 	 * Meta function for load all check functions.
@@ -115,10 +71,11 @@ class SimpleTaxonomy_Admin {
 	 * @return void
 	 * @author Amaury Balmer
 	 */
-	function checkAdminPost() {
-		$this->checkMergeTaxonomy();
-		$this->checkDeleteTaxonomy();
-		$this->checkImportExport();
+	public static function admin_init() {
+		self::checkMergeTaxonomy();
+		self::checkDeleteTaxonomy();
+		self::checkExportTaxonomy();
+		self::checkImportExport();
 	}
 	
 	/**
@@ -127,8 +84,8 @@ class SimpleTaxonomy_Admin {
 	 * @return void
 	 * @author Amaury Balmer
 	 */
-	function addMenu() {
-		add_options_page( __('Simple Taxonomy : Custom Taxonomies', 'simple-taxonomy'), __('Custom Taxonomies', 'simple-taxonomy'), 'manage_options', $this->admin_slug, array( &$this, 'pageManage' ) );
+	public static function admin_menu() {
+		add_options_page( __('Simple Taxonomy : Custom Taxonomies', 'simple-taxonomy'), __('Custom Taxonomies', 'simple-taxonomy'), 'manage_options', self::admin_slug, array( __CLASS__, 'pageManage' ) );
 	}
 	
 	/**
@@ -138,14 +95,14 @@ class SimpleTaxonomy_Admin {
 	 * @return void
 	 * @author Amaury Balmer
 	 */
-	function pageForm( $taxonomy ) {
+	public static function pageForm( $taxonomy ) {
 		?>
 		<div class="wrap">
 			<?php screen_icon(); ?>
 			<h2><?php printf(__('Custom Taxonomy : %s', 'simple-taxonomy'), stripslashes($taxonomy['labels']['name'])); ?></h2>
 			
 			<div class="form-wrap">
-				<?php $this->formMergeCustomType( $taxonomy ); ?>
+				<?php self::formMergeCustomType( $taxonomy ); ?>
 			</div>
 		</div>
 		<?php
@@ -157,7 +114,10 @@ class SimpleTaxonomy_Admin {
 	 * @return void
 	 * @author Amaury Balmer
 	 */
-	function pageManage() {
+	public static function pageManage() {
+		// Admin URL
+		$admin_url = admin_url( 'options-general.php?page='.self::admin_slug );
+
 		// Get current options
 		$current_options = get_option( STAXO_OPTION );
 		
@@ -165,25 +125,25 @@ class SimpleTaxonomy_Admin {
 		if ( isset($_GET['message']) ) {
 			switch ( $_GET['message'] ) {
 				case 'flush-deleted' :
-					$this->message = __('Taxonomy and relations deleted with success !', 'simple-taxonomy');
+					add_settings_error('simple-taxonomy', 'settings_updated', __('Taxonomy and relations deleted with success !', 'simple-taxonomy'), 'updated');
 					break;
 				case 'deleted' :
-					$this->message = __('Taxonomy deleted with success !', 'simple-taxonomy');
+					add_settings_error('simple-taxonomy', 'settings_updated', __('Taxonomy deleted with success !', 'simple-taxonomy'), 'updated');
 					break;
 				case 'added' :
-					$this->message = __('Taxonomy added with success !', 'simple-taxonomy');
+					add_settings_error('simple-taxonomy', 'settings_updated', __('Taxonomy added with success !', 'simple-taxonomy'), 'updated');
 					break;
 				case 'updated' :
-					$this->message = __('Taxonomy updated with success !', 'simple-taxonomy');
+					add_settings_error('simple-taxonomy', 'settings_updated', __('Taxonomy updated with success !', 'simple-taxonomy'), 'updated');
 					break;
 			}
 		}
 		
 		// Display message
-		$this->displayMessage();
+		settings_errors('simple-taxonomy');
 		
 		if ( isset($_GET['action']) && isset($_GET['taxonomy_name']) && $_GET['action'] == 'edit' && isset($current_options['taxonomies'][$_GET['taxonomy_name']]) ) {
-			$this->pageForm( $current_options['taxonomies'][$_GET['taxonomy_name']] );
+			self::pageForm( $current_options['taxonomies'][$_GET['taxonomy_name']] );
 			return true;
 		}
 		?>
@@ -229,12 +189,13 @@ class SimpleTaxonomy_Admin {
 								?>
 								<tr id="taxonomy-<?php echo $i; ?>" class="<?php echo $class; ?>">
 									<td class="name column-name">
-										<strong><a class="row-title" href="<?php echo $this->admin_url; ?>&amp;action=edit&amp;taxonomy_name=<?php echo $_t_name; ?>" title="<?php esc_attr_e(sprintf(__('Edit the taxonomy &#8220;%s&#8221;', 'simple-taxonomy'), $_t['labels']['name'])); ?>"><?php echo esc_html(stripslashes($_t['labels']['name'])); ?></a></strong>
+										<strong><a class="row-title" href="<?php echo $admin_url; ?>&amp;action=edit&amp;taxonomy_name=<?php echo $_t_name; ?>" title="<?php esc_attr_e(sprintf(__('Edit the taxonomy &#8220;%s&#8221;', 'simple-taxonomy'), $_t['labels']['name'])); ?>"><?php echo esc_html(stripslashes($_t['labels']['name'])); ?></a></strong>
 										<br />
 										<div class="row-actions">
-											<span class="edit"><a href="<?php echo $this->admin_url; ?>&amp;action=edit&amp;taxonomy_name=<?php echo $_t_name; ?>">Modifier</a> | </span>
-											<span class="delete"><a class="delete-taxonomy" href="<?php echo wp_nonce_url($this->admin_url.'&amp;action=delete&amp;taxonomy_name='.$_t_name, 'delete-taxo-'.$_t_name); ?>" onclick="if ( confirm( '<?php echo esc_js( sprintf( __( "You are about to delete this taxonomy '%s'\n  'Cancel' to stop, 'OK' to delete.", 'simple-taxonomy' ), $_t['labels']['name'] ) ); ?>' ) ) { return true;}return false;"><?php _e('Delete', 'simple-taxonomy'); ?></a> | </span>
-											<span class="delete"><a class="flush-delete-taxonomy" href="<?php echo wp_nonce_url($this->admin_url.'&amp;action=flush-delete&amp;taxonomy_name='.$_t_name, 'flush-delete-taxo-'.$_t_name); ?>" onclick="if ( confirm( '<?php echo esc_js( sprintf( __( "You are about to delete and flush this taxonomy '%s' and all relations.\n  'Cancel' to stop, 'OK' to delete.", 'simple-taxonomy' ), $_t['labels']['name'] ) ); ?>' ) ) { return true;}return false;"><?php _e('Flush & Delete', 'simple-taxonomy'); ?></a></span>
+											<span class="edit"><a href="<?php echo $admin_url; ?>&amp;action=edit&amp;taxonomy_name=<?php echo $_t_name; ?>">Modifier</a> | </span>
+											<span class="export"><a class="export_php-taxonomy" href="<?php echo wp_nonce_url($admin_url.'&amp;action=export_php&amp;taxonomy_name='.$_t_name, 'export_php-taxo-'.$_t_name); ?>"><?php _e('Export PHP', 'simple-taxonomy'); ?></a> | </span>
+											<span class="delete"><a class="delete-taxonomy" href="<?php echo wp_nonce_url($admin_url.'&amp;action=delete&amp;taxonomy_name='.$_t_name, 'delete-taxo-'.$_t_name); ?>" onclick="if ( confirm( '<?php echo esc_js( sprintf( __( "You are about to delete this taxonomy '%s'\n  'Cancel' to stop, 'OK' to delete.", 'simple-taxonomy' ), $_t['labels']['name'] ) ); ?>' ) ) { return true;}return false;"><?php _e('Delete', 'simple-taxonomy'); ?></a> | </span>
+											<span class="delete"><a class="flush-delete-taxonomy" href="<?php echo wp_nonce_url($admin_url.'&amp;action=flush-delete&amp;taxonomy_name='.$_t_name, 'flush-delete-taxo-'.$_t_name); ?>" onclick="if ( confirm( '<?php echo esc_js( sprintf( __( "You are about to delete and flush this taxonomy '%s' and all relations.\n  'Cancel' to stop, 'OK' to delete.", 'simple-taxonomy' ), $_t['labels']['name'] ) ); ?>' ) ) { return true;}return false;"><?php _e('Flush & Delete', 'simple-taxonomy'); ?></a></span>
 										</div>
 									</td>
 									<td><?php echo esc_html($_t['name']); ?></td>
@@ -255,8 +216,8 @@ class SimpleTaxonomy_Admin {
 										}
 										?>
 									</td>
-									<td><?php echo esc_html($this->getTrueFalse($_t['hierarchical'])); ?></td>
-									<td><?php echo esc_html($this->getTrueFalse($_t['public'])); ?></td>
+									<td><?php echo esc_html(self::getTrueFalse($_t['hierarchical'])); ?></td>
+									<td><?php echo esc_html(self::getTrueFalse($_t['public'])); ?></td>
 								</tr>
 							<?php
 							endforeach;
@@ -269,7 +230,7 @@ class SimpleTaxonomy_Admin {
 				
 				<div class="form-wrap">
 					<h3><?php _e('Add a new taxonomy', 'simple-taxonomy'); ?></h3>
-					<?php $this->formMergeCustomType(); ?>
+					<?php self::formMergeCustomType(); ?>
 				</div>
 			</div><!-- /col-container -->
 		</div>
@@ -277,7 +238,7 @@ class SimpleTaxonomy_Admin {
 		<div class="wrap">
 			<h2><?php _e("Simple Taxonomy : Export/Import", 'simple-taxonomy'); ?></h2>
 			
-			<a class="button" href="<?php echo wp_nonce_url($this->admin_url.'&amp;action=export_config_st', 'export-config-st'); ?>"><?php _e("Export config file", 'simple-taxonomy'); ?></a>
+			<a class="button" href="<?php echo wp_nonce_url($admin_url.'&amp;action=export_config_st', 'export-config-st'); ?>"><?php _e("Export config file", 'simple-taxonomy'); ?></a>
 			<a class="button" href="#" id="toggle-import_form"><?php _e("Import config file", 'simple-taxonomy'); ?></a>
 			<script type="text/javascript">
 				jQuery("#toggle-import_form").click(function(event) {
@@ -286,7 +247,7 @@ class SimpleTaxonomy_Admin {
 				});
 			</script>
 			<div id="import_form" class="hide-if-js">
-				<form action="<?php echo $this->admin_url ; ?>" method="post" enctype="multipart/form-data">
+				<form action="<?php echo $admin_url ; ?>" method="post" enctype="multipart/form-data">
 					<p>
 						<label><?php _e("Config file", 'simple-taxonomy'); ?></label>
 						<input type="file" name="config_file" />
@@ -309,63 +270,28 @@ class SimpleTaxonomy_Admin {
 	 * @return void
 	 * @author Amaury Balmer
 	 */
-	function formMergeCustomType( $taxonomy = null ) {
+	private static function formMergeCustomType( $taxonomy = null ) {
+		// Admin URL
+		$admin_url = admin_url( 'options-general.php?page='.self::admin_slug );
+		
 		if ( $taxonomy == null ) {
 			$edit 		 = false;
 			$_action 	 = 'add-taxonomy';
 			$submit_val	 = __('Add taxonomy', 'simple-taxonomy');
 			$nonce_field = 'simpletaxonomy-add-taxo';
-			
-			foreach( (array) $this->taxonomy_fields as $field => $default_value ) {  // Use default value
-				if ( is_array($default_value) ) {
-					$taxonomy[$field] = array();
-					foreach( $default_value as $k => $_v ) {
-						if ( is_string($_v) ) {
-							$taxonomy[$field][$k] = trim(stripslashes($_v));
-						} else {
-							$taxonomy[$field][$k] = $_v;
-						}
-					}
-				} else {
-					$taxonomy[$field] = $default_value;
-				}
-			}
 		} else {
 			$edit 		 = true;
 			$_action 	 = 'merge-taxonomy';
 			$submit_val	 = __('Update taxonomy', 'simple-taxonomy');
-			$nonce_field = 'simpletaxonomy-edit-taxo';
-			
-			// clean values
-			foreach( (array) $this->taxonomy_fields as $field => $default_value ) {
-				if ( isset($taxonomy[$field]) && is_string($taxonomy[$field]) ) { // Isset, juste clean values
-					$taxonomy[$field] = trim(stripslashes($taxonomy[$field]));
-				} elseif ( isset($taxonomy[$field]) && is_array($taxonomy[$field]) ) { // Isset, but dispatch array
-					foreach( $taxonomy[$field] as $k => $_v ) {
-						if ( is_string($_v) ) {
-							$taxonomy[$field][$k] = trim(stripslashes($_v));
-						} else {
-							$taxonomy[$field][$k] = $_v;
-						}
-					}
-				} elseif ( !isset($taxonomy[$field]) ) { // No set, try to set default values
-					if ( is_array($default_value) ) {
-						$taxonomy[$field] = array();
-						foreach( $default_value as $k => $_v ) {
-							if ( is_string($_v) ) {
-								$taxonomy[$field][$k] = trim(stripslashes($_v));
-							} else {
-								$taxonomy[$field][$k] = $_v;
-							}
-						}
-					} else {
-						$taxonomy[$field] = $default_value;
-					}
-				}
-			}
+			$nonce_field = 'simpletaxonomy-edit-taxo';		
 		}
+
+		// Get default values if need
+		$taxonomy = wp_parse_args( $taxonomy, self::get_taxonomy_default_fields() );
+		$taxonomy['labels'] = wp_parse_args( $taxonomy['labels'], self::get_taxonomy_default_labels() );
+		$taxonomy['capabilities'] = wp_parse_args( $taxonomy['capabilities'], self::get_taxonomy_default_capabilities() );
 		?>
-		<form id="addtag" method="post" action="<?php echo $this->admin_url ; ?>">
+		<form id="addtag" method="post" action="<?php echo $admin_url ; ?>">
 			<input type="hidden" name="action" value="<?php echo $_action; ?>" />
 			<?php wp_nonce_field( $nonce_field ); ?>
 			
@@ -385,7 +311,7 @@ class SimpleTaxonomy_Admin {
 									<label for="rewrite"><?php _e('Rewrite ?', 'simple-taxonomy'); ?></label>
 									<select name="rewrite" id="rewrite" style="width:50%">
 										<?php
-										foreach( $this->getTrueFalse() as $type_key => $type_name ) {
+										foreach( self::getTrueFalse() as $type_key => $type_name ) {
 											echo '<option '.selected($taxonomy['rewrite'], $type_key, false).' value="'.esc_attr($type_key).'">'.esc_html($type_name).'</option>' . "\n";
 										}
 										?>
@@ -404,7 +330,7 @@ class SimpleTaxonomy_Admin {
 									<label for="show_ui"><?php _e('Display on admin ?', 'simple-taxonomy'); ?></label>
 									<select name="show_ui" id="show_ui" style="width:50%">
 										<?php
-										foreach( $this->getTrueFalse() as $type_key => $type_name ) {
+										foreach( self::getTrueFalse() as $type_key => $type_name ) {
 											echo '<option '.selected($taxonomy['show_ui'], $type_key, false).' value="'.esc_attr($type_key).'">'.esc_html($type_name).'</option>' . "\n";
 										}
 										?>
@@ -416,7 +342,7 @@ class SimpleTaxonomy_Admin {
 									<label for="metabox"><?php _e('Admin form', 'simple-taxonomy'); ?></label>
 									<select id="metabox" name="metabox" style="width:50%">
 										<?php
-										foreach( $this->getAdminTypes() as $type_key => $type_name ) {
+										foreach( self::getAdminTypes() as $type_key => $type_name ) {
 											echo '<option '.selected($taxonomy['metabox'], $type_key, false).' value="'.esc_attr($type_key).'">'.esc_html($type_name).'</option>' . "\n";
 										}
 										?>
@@ -428,7 +354,7 @@ class SimpleTaxonomy_Admin {
 									<label for="show_in_nav_menus"><?php _e('Show in nav menu ?', 'simple-taxonomy'); ?></label>
 									<select name="show_in_nav_menus" id="show_in_nav_menus" style="width:50%">
 										<?php
-										foreach( $this->getTrueFalse() as $type_key => $type_name ) {
+										foreach( self::getTrueFalse() as $type_key => $type_name ) {
 											echo '<option '.selected($taxonomy['show_in_nav_menus'], $type_key, false).' value="'.esc_attr($type_key).'">'.esc_html($type_name).'</option>' . "\n";
 										}
 										?>
@@ -440,7 +366,7 @@ class SimpleTaxonomy_Admin {
 									<label for="show_tagcloud"><?php _e('Show in tag cloud widget ?', 'simple-taxonomy'); ?></label>
 									<select name="show_tagcloud" id="show_tagcloud" style="width:50%">
 										<?php
-										foreach( $this->getTrueFalse() as $type_key => $type_name ) {
+										foreach( self::getTrueFalse() as $type_key => $type_name ) {
 											echo '<option '.selected($taxonomy['show_tagcloud'], $type_key, false).' value="'.esc_attr($type_key).'">'.esc_html($type_name).'</option>' . "\n";
 										}
 										?>
@@ -503,7 +429,7 @@ class SimpleTaxonomy_Admin {
 											<td>
 												<select name="hierarchical" id="hierarchical" style="width:20%">
 													<?php
-													foreach( $this->getTrueFalse() as $type_key => $type_name ) {
+													foreach( self::getTrueFalse() as $type_key => $type_name ) {
 														echo '<option '.selected($taxonomy['hierarchical'], $type_key, false).' value="'.esc_attr($type_key).'">'.esc_html($type_name).'</option>' . "\n";
 													}
 													?>
@@ -521,7 +447,7 @@ class SimpleTaxonomy_Admin {
 												} else {
 													$objects = array();
 												}
-												foreach( $this->getObjectTypes() as $type ) {
+												foreach( self::getObjectTypes() as $type ) {
 													echo '<label class="inline"><input type="checkbox" '.checked( true, in_array($type->name, $objects), false).' name="objects[]" value="'.esc_attr($type->name).'" /> '.esc_html($type->label).'</label>' . "\n";
 												}
 												?>
@@ -533,7 +459,7 @@ class SimpleTaxonomy_Admin {
 											<td>
 												<select name="auto" id="auto" style="width:50%">
 													<?php
-													foreach( $this->getAutoContentTypes() as $type_key => $type_name ) {
+													foreach( self::getAutoContentTypes() as $type_key => $type_name ) {
 														echo '<option '.selected($taxonomy['auto'], $type_key, false).' value="'.esc_attr($type_key).'">'.esc_html($type_name).'</option>' . "\n";
 													}
 													?>
@@ -556,7 +482,7 @@ class SimpleTaxonomy_Admin {
 											<td>
 												<select name="public" id="public" style="width:20%">
 													<?php
-													foreach( $this->getTrueFalse() as $type_key => $type_name ) {
+													foreach( self::getTrueFalse() as $type_key => $type_name ) {
 														echo '<option '.selected($taxonomy['public'], $type_key, false).' value="'.esc_attr($type_key).'">'.esc_html($type_name).'</option>' . "\n";
 													}
 													?>
@@ -624,6 +550,12 @@ class SimpleTaxonomy_Admin {
 											</td>
 										</tr>
 										<tr valign="top">
+											<th scope="row"><label for="labels-view_item"><?php _e('View Term', 'simple-taxonomy'); ?></label></th>
+											<td>
+												<input name="labels[view_item]" type="text" id="labels-view_item" value="<?php echo esc_attr($taxonomy['labels']['view_item']); ?>" class="regular-text" />
+											</td>
+										</tr>
+										<tr valign="top">
 											<th scope="row"><label for="labels-update_item"><?php _e('Update Term', 'simple-taxonomy'); ?></label></th>
 											<td>
 												<input name="labels[update_item]" type="text" id="labels-update_item" value="<?php echo esc_attr($taxonomy['labels']['update_item']); ?>" class="regular-text" />
@@ -679,7 +611,7 @@ class SimpleTaxonomy_Admin {
 	 * 
 	 * @return boolean
 	 */
-	function checkImportExport() {
+	private static function checkImportExport() {
 		if ( isset($_GET['action']) && $_GET['action'] == 'export_config_st' ) {
 			check_admin_referer('export-config-st');
 			
@@ -703,22 +635,18 @@ class SimpleTaxonomy_Admin {
 			check_admin_referer( 'import_config_file_st' );
 			
 			if ( $_FILES['config_file']['error'] > 0 ) {
-				$this->message = __('An error occured during the config file upload. Please fix your server configuration and retry.', 'simple-taxonomy');
-				$this->status  = 'error';
+				add_settings_error('simple-taxonomy', 'settings_updated', __('An error occured during the config file upload. Please fix your server configuration and retry.', 'simple-taxonomy'), 'error');
 			} else {
 				$config_file = file_get_contents( $_FILES['config_file']['tmp_name'] );
 				if ( substr($config_file, 0, strlen('SIMPLETAXONOMY')) !== 'SIMPLETAXONOMY' ) {
-					$this->message = __('This is really a config file for Simple Taxonomy ? Probably corrupt :(', 'simple-taxonomy');
-					$this->status  = 'error';
+					add_settings_error('simple-taxonomy', 'settings_updated', __('This is really a config file for Simple Taxonomy ? Probably corrupt :(', 'simple-taxonomy'), 'error');
 				} else {
 					$config_file = unserialize(base64_decode(substr($config_file, strlen('SIMPLETAXONOMY'))));
 					if ( !is_array($config_file) ) {
-						$this->message = __('This is really a config file for Simple Taxonomy ? Probably corrupt :(', 'simple-taxonomy');
-						$this->status  = 'error';
+						add_settings_error('simple-taxonomy', 'settings_updated', __('This is really a config file for Simple Taxonomy ? Probably corrupt :(', 'simple-taxonomy'), 'error');
 					} else {
 						update_option(STAXO_OPTION, $config_file);
-						$this->message = __('OK. Configuration is restored.', 'simple-taxonomy');
-						$this->status  = 'updated';
+						add_settings_error('simple-taxonomy', 'settings_updated', __('OK. Configuration is restored.', 'simple-taxonomy'), 'updated');
 					}
 				}
 			}
@@ -730,7 +658,7 @@ class SimpleTaxonomy_Admin {
 	 * 
 	 * @return boolean
 	 */
-	function checkMergeTaxonomy() {
+	private static function checkMergeTaxonomy() {
 		if ( isset($_POST['action']) && in_array( $_POST['action'], array('add-taxonomy', 'merge-taxonomy') ) ) {
 			
 			if ( !current_user_can('manage_options') )
@@ -738,7 +666,7 @@ class SimpleTaxonomy_Admin {
 				
 			// Clean values from _POST
 			$taxonomy = array();
-			foreach( (array) $this->taxonomy_fields as $field => $default_value ) {
+			foreach( self::get_taxonomy_default_fields() as $field => $default_value ) {
 				if ( isset($_POST[$field]) && is_string($_POST[$field]) ) {// String ?
 					$taxonomy[$field] = trim( stripslashes( $_POST[$field] ) );
 				} elseif ( isset($_POST[$field]) ) {
@@ -774,21 +702,69 @@ class SimpleTaxonomy_Admin {
 					if ( taxonomy_exists($taxonomy['name']) ) { // Default Taxo already exist ?
 						wp_die( __('Tcheater ? You try to add a taxonomy with a name already used by an another taxonomy.', 'simple-taxonomy') );
 					}
-					$this->addTaxonomy( $taxonomy );
+					self::addTaxonomy( $taxonomy );
 				} else {
 					check_admin_referer( 'simpletaxonomy-edit-taxo' );
-					$this->updateTaxonomy( $taxonomy );
+					self::updateTaxonomy( $taxonomy );
 				}
 				
 				// Flush rewriting rules !
-				global $wp_rewrite;
-				$wp_rewrite->flush_rules(false);
+				flush_rewrite_rules( false );
 				
 				return true;
 			} else {
-				$this->message = __('Impossible to add your taxonomy... You must enter a taxonomy name.', 'simple-taxonomy');
-				$this->status  = 'error';
+				add_settings_error('simple-taxonomy', 'settings_updated', __('Impossible to add your taxonomy... You must enter a taxonomy name.', 'simple-taxonomy'), 'error');
 			}
+		}
+		
+		return false;
+	}
+
+	/**
+	 * Allow to export registration CPT with PHP
+	 */
+	private static function checkExportTaxonomy() {
+		global $simple_taxonomy;
+		
+		if ( isset($_GET['action']) && isset($_GET['taxonomy_name']) && $_GET['action'] == 'export_php' ) {
+			check_admin_referer( 'export_php-taxo-'.$_GET['taxonomy_name'] );
+			
+			// Get proper taxo name
+			$taxo_name = stripslashes($_GET['taxonomy_name']);
+			
+			// Get taxo data
+			$current_options = get_option( STAXO_OPTION );
+			if ( !isset($current_options['taxonomies'][$taxo_name]) ) { // Taxo not exist ?
+				wp_die( __('Tcheater ? You try to delete a taxonomy who not exist...', 'simple-taxonomy') );
+				return false;
+			} else {
+				$taxo_data = $current_options['taxonomies'][$taxo_name];
+			}
+			
+			// Get proper args
+			$args = $simple_taxonomy['client-base']->prepareArgs( $taxo_data );
+			
+			// Get args to code
+			$code = 'register_taxonomy( "'.$taxo_data['name'].'", '.var_export($taxo_data['objects'], true).', '.var_export($args, true).' );';
+			
+			// Get plugin template
+			$output = file_get_contents( STAXO_DIR . '/inc/template/plugin.tpl' );
+			
+			// Replace marker by variables
+			$output = str_replace( '%TAXO_LABEL%', $args['labels']['name'], $output );
+			$output = str_replace( '%TAXO_NAME%', str_replace('-', '_', $taxo_name), $output );
+			$output = str_replace( '%TAXO_CODE%', $code, $output );
+			
+			// Force download
+			header( "Content-Disposition: attachment; filename=" . $taxo_name.'.php' );
+			header( "Content-Type: application/force-download" );
+			header( "Content-Type: application/octet-stream" );
+			header( "Content-Type: application/download" );
+			header( "Content-Description: File Transfer" ); 
+			flush(); // this doesn't really matter.
+			
+			die($output);
+			return true;
 		}
 		
 		return false;
@@ -800,17 +776,16 @@ class SimpleTaxonomy_Admin {
 	 * @return void
 	 * @author Amaury Balmer
 	 */
-	function checkDeleteTaxonomy() {
+	private static function checkDeleteTaxonomy() {
 		if ( isset($_GET['action']) && isset($_GET['taxonomy_name']) && $_GET['action'] == 'delete' ) {
 			check_admin_referer( 'delete-taxo-'.$_GET['taxonomy_name'] );
 			
 			$taxonomy = array();
 			$taxonomy['name'] = stripslashes($_GET['taxonomy_name']);
-			$this->deleteTaxonomy( $taxonomy, false );
+			self::deleteTaxonomy( $taxonomy, false );
 			
 			// Flush rewriting rules !
-			global $wp_rewrite;
-			$wp_rewrite->flush_rules(false);
+			flush_rewrite_rules( false );
 			
 			return true;
 		} elseif ( isset($_GET['action']) && isset($_GET['taxonomy_name']) && $_GET['action'] == 'flush-delete' ) {
@@ -818,11 +793,10 @@ class SimpleTaxonomy_Admin {
 			
 			$taxonomy = array();
 			$taxonomy['name'] = stripslashes($_GET['taxonomy_name']);
-			$this->deleteTaxonomy( $taxonomy, true );
+			self::deleteTaxonomy( $taxonomy, true );
 			
 			// Flush rewriting rules !
-			global $wp_rewrite;
-			$wp_rewrite->flush_rules(false);
+			flush_rewrite_rules( false );
 			
 			return true;
 		}
@@ -837,7 +811,7 @@ class SimpleTaxonomy_Admin {
 	 * @return void
 	 * @author Amaury Balmer
 	 */
-	function addTaxonomy( $taxonomy ) {
+	private static function addTaxonomy( $taxonomy ) {
 		$current_options = get_option( STAXO_OPTION );
 		
 		if ( isset($current_options['taxonomies'][$taxonomy['name']]) ) { // User taxo already exist ?
@@ -847,7 +821,7 @@ class SimpleTaxonomy_Admin {
 		
 		update_option( STAXO_OPTION, $current_options );
 		
-		wp_redirect( $this->admin_url.'&message=added' );
+		wp_redirect( admin_url( 'options-general.php?page='.self::admin_slug ).'&message=added' );
 		exit();
 	}
 	
@@ -858,7 +832,7 @@ class SimpleTaxonomy_Admin {
 	 * @return void
 	 * @author Amaury Balmer
 	 */
-	function updateTaxonomy( $taxonomy ) {
+	private static function updateTaxonomy( $taxonomy ) {
 		$current_options = get_option( STAXO_OPTION );
 		
 		if ( !isset($current_options['taxonomies'][$taxonomy['name']]) ) { // Taxo not exist ?
@@ -868,7 +842,7 @@ class SimpleTaxonomy_Admin {
 		
 		update_option( STAXO_OPTION, $current_options );
 		
-		wp_redirect( $this->admin_url.'&message=updated' );
+		wp_redirect( admin_url( 'options-general.php?page='.self::admin_slug ).'&message=updated' );
 		exit();
 	}
 	
@@ -880,7 +854,7 @@ class SimpleTaxonomy_Admin {
 	 * @return boolean|void
 	 * @author Amaury Balmer
 	 */
-	function deleteTaxonomy( $taxonomy, $flush_relations = false ) {
+	private static function deleteTaxonomy( $taxonomy, $flush_relations = false ) {
 		$current_options = get_option( STAXO_OPTION );
 		
 		if ( !isset($current_options['taxonomies'][$taxonomy['name']]) ) { // Taxo not exist ?
@@ -891,11 +865,11 @@ class SimpleTaxonomy_Admin {
 		unset($current_options['taxonomies'][$taxonomy['name']]); // Delete from options
 		
 		if ( $flush_relations == true )
-			$this->deleteObjectsTaxonomy( $taxonomy['name'] ); // Delete object relations/terms
+			self::deleteObjectsTaxonomy( $taxonomy['name'] ); // Delete object relations/terms
 		
 		update_option( STAXO_OPTION, $current_options );
 		
-		wp_redirect( $this->admin_url.'&message=deleted' );
+		wp_redirect( admin_url( 'options-general.php?page='.self::admin_slug ).'&message=deleted' );
 		exit();
 	}
 	
@@ -906,7 +880,7 @@ class SimpleTaxonomy_Admin {
 	 * @return boolean
 	 * @author Amaury Balmer
 	 */
-	function deleteObjectsTaxonomy( $taxo_name = '' ) {
+	private static function deleteObjectsTaxonomy( $taxo_name = '' ) {
 		if ( empty($taxo_name) )
 			return false;
 	
@@ -928,9 +902,9 @@ class SimpleTaxonomy_Admin {
 	 * @return array|object
 	 * @author Amaury Balmer
 	 */
-	function getObjectTypes( $key = '' ) {
+	private static function getObjectTypes( $key = '' ) {
 		// Get all post types registered.
-		$object_types = get_post_types( array(), 'objects' );
+		$object_types = get_post_types( array('public' => true), 'objects' );
 		$object_types = apply_filters( 'staxo-object-types', $object_types, $key );
 		if ( isset($object_types[$key]) ) {
 			return $object_types[$key];
@@ -945,7 +919,7 @@ class SimpleTaxonomy_Admin {
 	 * @param $key
 	 * @return string/array
 	 */
-	function getTrueFalse( $key = '' ) {
+	private static function getTrueFalse( $key = '' ) {
 		$types = array( 
 			'1' => __('True', 'simple-taxonomy'), 
 			'0' => __('False', 'simple-taxonomy')
@@ -965,7 +939,7 @@ class SimpleTaxonomy_Admin {
 	 * @return array|string
 	 * @author Amaury Balmer
 	 */
-	function getAutoContentTypes( $key = '' ) {
+	private static function getAutoContentTypes( $key = '' ) {
 		$content_types = array( 
 			'none' 		=> __('None', 'simple-taxonomy'), 
 			'content' 	=> __('Content', 'simple-taxonomy'), 
@@ -988,7 +962,7 @@ class SimpleTaxonomy_Admin {
 	 * @return array|string
 	 * @author Amaury Balmer
 	 */
-	function getAdminTypes( $key = '' ) {
+	private static function getAdminTypes( $key = '' ) {
 		$admin_types = array(
 			'default'		=> __('Default', 'simple-taxonomy'),
 			'select' 		=> __('Select list', 'simple-taxonomy'),
@@ -1002,27 +976,63 @@ class SimpleTaxonomy_Admin {
 		
 		return $admin_types;
 	}
-	
+
 	/**
-	 * Display WP alert
-	 *
-	 * @return void
-	 * @author Amaury Balmer
+	 * Get array fields for CPT object
 	 */
-	function displayMessage() {
-		if ( $this->message != '') {
-			$message = $this->message;
-			$status = $this->status;
-			$this->message = $this->status = ''; // Reset
-		}
-		
-		if ( isset($message) && !empty($message) ) {
-		?>
-			<div id="message" class="<?php echo ($status != '') ? $status :'updated'; ?> fade">
-				<p><strong><?php echo $message; ?></strong></p>
-			</div>
-		<?php
-		}
+	private static function get_taxonomy_default_fields() {
+		return array( 
+			'name' 			=> '',
+			'objects' 		=> array(),
+			'update_count_callback' => '',
+			'hierarchical' 	=> 1, 
+			'rewrite' 		=> 1,
+			'query_var' 	=> '',
+			'show_ui' 		=> 1,
+			'show_tagcloud' => 1,
+			'show_in_nav_menus' => 1,
+			'labels' 		=> array(),
+			'capabilities' 	=> array(),
+			'public' 		=> 1,
+			// Specific to plugin
+			'objects'		=> array(),
+			'metabox' 		=> 'default',
+			'auto' 			=> 'none'
+		);
+	}
+
+/**
+	 * Get array fields for CPT object
+	 */
+	private static function get_taxonomy_default_labels() {
+		return array(
+			'name' 							=> _x( 'Post Terms', 'taxonomy general name', 'simple-taxonomy' ),
+			'singular_name' 				=> _x( 'Post Term', 'taxonomy singular name', 'simple-taxonomy' ),
+			'search_items' 					=> __( 'Search Terms', 'simple-taxonomy' ),
+			'popular_items' 				=> __( 'Popular Terms', 'simple-taxonomy' ),
+			'all_items' 					=> __( 'All Terms', 'simple-taxonomy' ),
+			'parent_item' 					=> __( 'Parent Term', 'simple-taxonomy' ),
+			'parent_item_colon' 			=> __( 'Parent Term:', 'simple-taxonomy' ),
+			'edit_item' 					=> __( 'Edit Term', 'simple-taxonomy' ),
+			'view_item' 					=> __( 'View Term', 'simple-taxonomy' ),
+			'update_item' 					=> __( 'Update Term', 'simple-taxonomy' ),
+			'add_new_item' 					=> __( 'Add New Term', 'simple-taxonomy' ),
+			'new_item_name' 				=> __( 'New Term Name', 'simple-taxonomy' ),
+			'separate_items_with_commas' 	=> __( 'Separate terms with commas', 'simple-taxonomy' ),
+			'add_or_remove_items' 			=> __( 'Add or remove terms', 'simple-taxonomy' ),
+			'choose_from_most_used' 		=> __( 'Choose from the most used terms', 'simple-taxonomy' )
+		);
+	}
+
+/**
+	 * Get array fields for CPT object
+	 */
+	private static function get_taxonomy_default_capabilities() {
+		return array(
+			'manage_terms' => 'manage_categories',
+			'edit_terms'   => 'manage_categories',
+			'delete_terms' => 'manage_categories',
+			'assign_terms' => 'edit_posts'
+		);
 	}
 }
-?>

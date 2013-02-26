@@ -143,7 +143,7 @@ just want to make sure that the form is presented uncorrupted.
 		<div class="cctm_element_wrapper" id="custom_field_wrapper_post_type">
 
 			<label for="post_type" class="cctm_label cctm_text_label" id="cctm_label_post_type">
-				post_type* </label>
+				<?php _e('post_type', CCTM_TXTDOMAIN); ?>* </label>
 			<input type="text" name="post_type" class="cctm_text" id="post_type" value="<?php print htmlspecialchars($data['post_type']); ?>"/>
 			<span class="cctm_description"><?php _e('This name may show up in your URLs, e.g. ?movie=epic-movie. This will also make a new theme file available, starting with prefix named "single-", e.g. <code>single-movie.php</code>.', CCTM_TXTDOMAIN); ?> <?php print $data['edit_warning']; ?></span>
 		</div>
@@ -151,7 +151,7 @@ just want to make sure that the form is presented uncorrupted.
 		<!-- menu_name_label -->
 		<div class="cctm_element_wrapper" id="custom_field_wrapper_menu_name_label">
 			<label for="menu_name_label" class="cctm_label cctm_text_label" id="cctm_label_menu_name_label">
-				Menu Name* 
+				<?php _e('Menu Name', CCTM_TXTDOMAIN); ?>* 
 				<a rel="ungrouped" href="<?php print CCTM_URL; ?>/images/screenshots/menu-name.jpg" title="Menu Name*" class="thickbox">
 					<img src="<?php print CCTM_URL; ?>/images/question-mark.gif" width="16" height="16" />
 				</a>
@@ -165,21 +165,21 @@ just want to make sure that the form is presented uncorrupted.
 		<!--!Description-->
 		<div class="cctm_element_wrapper" id="custom_field_wrapper_description">
 					
-			<label for="description" class="cctm_label cctm_textarea_label" id="cctm_label_description">Description</label>
+			<label for="description" class="cctm_label cctm_textarea_label" id="cctm_label_description"><?php _e('Description', CCTM_TXTDOMAIN); ?></label>
 			<textarea name="description" class="cctm_textarea" id="description" rows="4" cols="60"><?php print htmlspecialchars($data['def']['description']); ?></textarea>
 		</div>
 		
 		<!--!Use Default Menu Icon -->
 		<div class="cctm_element_wrapper" id="custom_field_wrapper_use_default_menu_icon">
 			<input type="checkbox" name="use_default_menu_icon" class="cctm_checkbox" id="use_default_menu_icon" value="1"  onclick="javascript:toggle_image_detail('menu_icon_container');" <?php print CCTM::is_checked($data['def']['use_default_menu_icon']); ?>/> 
-			<label for="use_default_menu_icon" class="cctm_label cctm_checkbox_label" id="cctm_label_use_default_menu_icon">Use Default Menu Icon</label>
+			<label for="use_default_menu_icon" class="cctm_label cctm_checkbox_label" id="cctm_label_use_default_menu_icon"><?php _e('Use Default Menu Icon', CCTM_TXTDOMAIN); ?></label>
 			<span class="cctm_description"><?php _e('Leave this checked to use the default posts icon.', CCTM_TXTDOMAIN); ?></span>
 		</div>
 		
 		<div id="menu_icon_container" style="display: none;">		
 			<!--!Menu Icon -->
 			<div class="cctm_element_wrapper" id="custom_field_wrapper_menu_icon">		
-				<label for="menu_icon" class="cctm_label cctm_text_label" id="cctm_label_menu_icon">Menu Icon</label>
+				<label for="menu_icon" class="cctm_label cctm_text_label" id="cctm_label_menu_icon"><?php _e('Menu Icon', CCTM_TXTDOMAIN); ?></label>
 				<input type="text" name="menu_icon" class="cctm_text" id="menu_icon" value="<?php if (isset($data['def']['menu_icon'])) { print htmlspecialchars($data['def']['menu_icon']); } ?>" size="100"/>
 					
 					<span id="sample_icon"><?php 
@@ -296,7 +296,7 @@ just want to make sure that the form is presented uncorrupted.
 		<!-- not_found_label -->
 		<div class="cctm_element_wrapper" id="custom_field_wrapper_not_found_label">
 			<label for="not_found_label" class="cctm_label cctm_text_label" id="cctm_label_not_found_label">
-				Not Found 
+				<?php _e('Not Found', CCTM_TXTDOMAIN); ?> 
 				<a rel="label-screenshots" href="<?php print CCTM_URL; ?>/images/screenshots/not-found.jpg" title="Not Found" class="thickbox">
 					<img src="<?php print CCTM_URL; ?>/images/question-mark.gif" width="16" height="16" />
 				</a>
@@ -336,8 +336,8 @@ just want to make sure that the form is presented uncorrupted.
 		<!--!Supports -->
 		<div class="cctm_element_wrapper" id="custom_field_wrapper_supports_title">			
 			<input type="checkbox" name="supports[]" class="cctm_checkbox" id="supports_title" value="title" <?php print CCTM::is_checked($data['def']['supports'], 'title'); ?> /> 
-			<label for="supports_title" class="cctm_label cctm_checkbox_label" id="cctm_label_supports_title_label">Title</label>
-			<span class="cctm_description"><?php _e('Post Title', CCTM_TXTDOMAIN); ?></span>
+			<label for="supports_title" class="cctm_label cctm_checkbox_label" id="cctm_label_supports_title_label"><?php _e('Title', CCTM_TXTDOMAIN); ?></label>
+			<span class="cctm_description"><?php _e('Post Title.', CCTM_TXTDOMAIN); ?> <span style="color:red;"><?php _e('Unchecking this is not recommended.', CCTM_TXTDOMAIN); ?></span></span>
 		</div>
 			
 		
@@ -369,7 +369,7 @@ just want to make sure that the form is presented uncorrupted.
 		
 		<div class="cctm_element_wrapper" id="custom_field_wrapper_supports_post-formats">			
 			<input type="checkbox" name="supports[]" class="cctm_checkbox" id="supports_post-formats" value="post-formats" <?php print CCTM::is_checked($data['def']['supports'], 'post-formats'); ?> /> 
-			<label for="supports_post-formats" class="cctm_label cctm_checkbox_label" id="cctm_label_supports_post_formats_label">Post Formats</label>
+			<label for="supports_post-formats" class="cctm_label cctm_checkbox_label" id="cctm_label_supports_post_formats_label"><?php _e('Post Formats', CCTM_TXTDOMAIN); ?></label>
 			<span class="cctm_description"><?php _e('A Post Format is a piece of meta information that can be used by a theme to customize its presentation of a post.', CCTM_TXTDOMAIN); ?></span>
 		</div>
 		
@@ -408,7 +408,8 @@ just want to make sure that the form is presented uncorrupted.
 				<input type="checkbox" name="cctm_hierarchical_custom" class="cctm_checkbox" id="cctm_hierarchical_custom" value="1" <?php if (isset($data['def']['cctm_hierarchical_custom'])) { print CCTM::is_checked($data['def']['cctm_hierarchical_custom']); } ?> 
 					onclick="javascript:toggle_div('cctm_hierarchical_custom', 'custom_field_wrapper_custom_hierarchy', '1');"/> 
 				<label for="cctm_hierarchical_custom" class="cctm_label cctm_checkbox_label" id="cctm_label_hierarchical"><?php _e('Use Custom Hierarchy', CCTM_TXTDOMAIN); ?></label>
-				<span class="cctm_description"><?php _e('Allows custom hierarchies to be specified. Hierarchical must be checked.', CCTM_TXTDOMAIN); ?></span>
+				<span class="cctm_description"><?php _e('Allows custom hierarchies to be specified.', CCTM_TXTDOMAIN); ?>
+				(<?php _e('Hierarchical must be checked.', CCTM_TXTDOMAIN); ?>)</span>
 
 				
 			<!-- Working : Custom hierarchy-->
@@ -461,7 +462,7 @@ just want to make sure that the form is presented uncorrupted.
 				onclick="javascript:toggle_custom_columns();" /> 
 			<label for="cctm_custom_columns_enabled" class="cctm_label cctm_checkbox_label" id="cctm_label_cctm_custom_columns_enabled">
 			<?php _e('Customize Columns', CCTM_TXTDOMAIN); ?></label>
-			<span class="cctm_description"><?php _e("You can customize the columns visible when you display a list of all posts in this post-type. WARNING: you can only use custom columns if the post-type name does not contain hyphens; underscores are Ok.", CCTM_TXTDOMAIN); ?></span>
+			<span class="cctm_description"><?php _e('You can customize the columns visible when you display a list of all posts in this post-type.', CCTM_TXTDOMAIN);?> <span style="color:red;"><?php _e('WARNING: you can only use custom columns if the post-type name does not contain hyphens; underscores are Ok.', CCTM_TXTDOMAIN); ?></span></span>
 		</div>
 		<br />
 		<!-- the columns -->
@@ -511,6 +512,15 @@ just want to make sure that the form is presented uncorrupted.
 			</div>
 			<span class="cctm_description"><?php _e('Whether to show the post type in the admin menu. Change this to <em>Custom</em> to specify a top level page like <code>tools.php</code> or <code>edit.php?post_type=page</code>', CCTM_TXTDOMAIN); ?></span>
 		</div>
+
+		<!--! show_in_admin_bar -->			
+		<div class="cctm_element_wrapper" id="custom_field_wrapper_show_in_admin_bar">		
+			<input type="checkbox" name="show_in_admin_bar" class="cctm_checkbox" id="show_in_admin_bar" value="1" <?php 
+				print CCTM::is_checked($data['def']['show_in_admin_bar']); 
+			?>/> 
+			<label for="cctm_enable_right_now" class="cctm_label cctm_checkbox_label" id="cctm_label_cctm_enable_right_now"><?php _e('Show in Admin Bar', CCTM_TXTDOMAIN); ?></label>
+			<span class="cctm_description"><?php _e('Whether to make this post type available in the WordPress admin bar.', CCTM_TXTDOMAIN); ?></span>
+		</div>
 				
 		<!--!Menu Position-->
 		<div class="cctm_element_wrapper" id="custom_field_wrapper_menu_position">
@@ -558,7 +568,7 @@ just want to make sure that the form is presented uncorrupted.
 				
 			<span class="cctm_description"><?php _e('Use permalink rewrites for this post_type? Default: Off', CCTM_TXTDOMAIN); ?>
 				<ul style="margin-left:20px;">
-					<li><strong>Off</strong> - <?php _e('URLs for custom post_types will always look like: http://site.com/?post_type=book&p=39 even if the rest of the site is using a different permalink structure.', CCTM_TXTDOMAIN); ?></li>
+					<li><strong><?php _e('Off', CCTM_TXTDOMAIN); ?></strong> - <?php _e('URLs for custom post_types will always look like: http://site.com/?post_type=book&p=39 even if the rest of the site is using a different permalink structure.', CCTM_TXTDOMAIN); ?></li>
 					<li><strong>/%postname%/</strong> - <?php _e('Currently, this is the only custom permalink structure that is supported. Other formats are not supported.  Your URLs will look like http://site.com/your_post_type/your-title/', CCTM_TXTDOMAIN); ?></li>
 					<li><strong><?php _e('Custom', CCTM_TXTDOMAIN); ?></strong> - <?php _e('Evaluate the contents of slug', CCTM_TXTDOMAIN); ?></li>
 				<ul>
@@ -642,7 +652,8 @@ just want to make sure that the form is presented uncorrupted.
 			?>/> 
 			<label for="include_in_rss" class="cctm_label cctm_checkbox_label" id="cctm_label_include_in_rss"><?php _e('Include in RSS feed', CCTM_TXTDOMAIN); ?> <img src="<?php print CCTM_URL;?>/images/rss.jpg" height="16" width="16" als="RSS"/></label>
 			<span class="cctm_description"><?php _e('Should posts with this post type be included in the RSS feed?', CCTM_TXTDOMAIN); ?></span>
-		</div>
+		</div>	
+		
 	</div>	
 </fieldset>		
 </div>
@@ -651,7 +662,29 @@ just want to make sure that the form is presented uncorrupted.
 		<div class="cctm_element_wrapper" id="custom_field_wrapper_capability_type">			
 			<label for="capability_type" class="cctm_label cctm_text_label" id="cctm_label_capability_type"><?php _e('Capability Type', CCTM_TXTDOMAIN); ?></label>
 			<input type="text" name="capability_type" class="cctm_text" id="capability_type" value="<?php print htmlspecialchars($data['def']['capability_type']); ?>"/>
-			<span class="cctm_description"><?php _e('The post type to use for checking read, edit, and delete capabilities. Default: "post"', CCTM_TXTDOMAIN); ?></span>
+			<span class="cctm_description"><?php _e('The string to use to build the read, edit, and delete capabilities. May be passed a comma-separated string to allow for alternative plurals (e.g. "child,children"). Default: "post".', CCTM_TXTDOMAIN); ?></span>
+		</div>
+
+		<!--!map_meta_cap -->
+		<div class="cctm_element_wrapper" id="custom_field_wrapper_map_meta_cap">
+			<input type="checkbox" name="map_meta_cap" class="cctm_checkbox" id="map_meta_cap" value="1" <?php print CCTM::is_checked($data['def']['map_meta_cap']); ?> /> 
+			<label for="map_meta_cap" class="cctm_label cctm_checkbox_label" id="cctm_label_map_meta_cap"><?php _e('Map Meta Cap', CCTM_TXTDOMAIN); ?></label>
+			<span class="cctm_description"><?php _e('Whether to use the internal default meta capability handling. If checked, you must supply a valid mapping in the "Capabilities" field.', CCTM_TXTDOMAIN); ?></span>
+		</div>
+				
+		<!-- Capabilities (string)-->
+		<div class="cctm_element_wrapper" id="custom_field_wrapper_capabilities">			
+			<label for="capabilities" class="cctm_label cctm_text_label" id="cctm_label_capabilities"><?php _e('Capabilities', CCTM_TXTDOMAIN); ?></label>
+			<input type="text" name="capabilities" class="cctm_text" id="capabilities" value="<?php print CCTM::get_value($data['def'],'capabilities'); ?>"/>
+			<span class="cctm_description"><?php _e('URL-style notation of the capabilities for this post type, e.g. <code>publish_posts=publish_events&edit_posts=edit_events</code>.', CCTM_TXTDOMAIN); ?></span>
+			<!-- span style="color:red;"><?php _e('WARNING: improper key/value combinations can throw numerous errors!', CCTM_TXTDOMAIN); ?></span-->
+		</div>
+
+		<!-- register_meta_box_cb -->
+		<div class="cctm_element_wrapper" id="custom_field_wrapper_register_meta_box_cb">			
+			<label for="register_meta_box_cb" class="cctm_label cctm_text_label" id="cctm_label_register_meta_box_cb"><?php _e('Meta Box Callback', CCTM_TXTDOMAIN); ?></label>
+			<input type="text" name="register_meta_box_cb" class="cctm_text" id="register_meta_box_cb" value="<?php print htmlspecialchars(CCTM::get_value($data['def'],'register_meta_box_cb')); ?>"/>
+			<span class="cctm_description"><?php _e('Provide an optional callback function that will be called when setting up the meta boxes for the edit form.', CCTM_TXTDOMAIN); ?></span>
 		</div>
 		
 		<!--!Can Export -->
@@ -681,7 +714,7 @@ just want to make sure that the form is presented uncorrupted.
 		<div class="cctm_element_wrapper" id="custom_field_wrapper_supports_revisions">			
 			<input type="checkbox" name="supports[]" class="cctm_checkbox" id="supports_revisions" value="revisions" <?php print CCTM::is_checked($data['def']['supports'], 'revisions'); ?> /> 
 			<label for="supports_revisions" class="cctm_label cctm_checkbox_label" id="cctm_label_supports_revisions_label"><?php _e('Store Revisions', CCTM_TXTDOMAIN); ?></label>
-					<span class="cctm_description"><?php _e('Revisions are useful if you ever need to go back to an older version of a document. WARNING: revisions do not store custom field data!  This is a limitation of WordPress (see <a href="http://code.google.com/p/wordpress-custom-content-type-manager/issues/detail?id=266">issue 266</a>).', CCTM_TXTDOMAIN); ?></span>
+					<span class="cctm_description"><?php _e('Revisions are useful if you ever need to go back to an older version of a document.', CCTM_TXTDOMAIN);?> <span style="color:red;"><?php _e('WARNING: revisions do not store custom field data!  This is a limitation of WordPress (see <a href="http://code.google.com/p/wordpress-custom-content-type-manager/issues/detail?id=266">issue 266</a>).', CCTM_TXTDOMAIN); ?></span></span>
 		</div>
 
 		<div class="cctm_element_wrapper" id="custom_field_wrapper_has_archive">
@@ -689,9 +722,17 @@ just want to make sure that the form is presented uncorrupted.
 			<label for="has_archive" class="cctm_label cctm_checkbox_label" id="cctm_label_has_archive_label">
 				<?php _e('Enable Archives', CCTM_TXTDOMAIN); ?>
 			</label>
-			<span class="cctm_description"><?php _e('If enabled, posts will be listed in archive lists (e.g. by month). This also enables posts to show up in tag or category lists.', CCTM_TXTDOMAIN); ?></span>
+			<span class="cctm_description"><?php _e('If enabled, posts will be listed in archive lists (e.g. by month).', CCTM_TXTDOMAIN); ?></span>
 		</div>
 
+		<!--! Appear in Right Now Widget -->			
+		<div class="cctm_element_wrapper" id="custom_field_wrapper_cctm_enable_right_now">		
+			<input type="checkbox" name="cctm_enable_right_now" class="cctm_checkbox" id="cctm_enable_right_now" value="1" <?php 
+				print CCTM::is_checked($data['def']['cctm_enable_right_now']); 
+			?>/> 
+			<label for="cctm_enable_right_now" class="cctm_label cctm_checkbox_label" id="cctm_label_cctm_enable_right_now"><?php _e('Show in Right Now Widget', CCTM_TXTDOMAIN); ?></label>
+			<span class="cctm_description"><?php _e('Should posts with this post type appear in the Dashboard "Right Now" widget? The global setting must be enabled.', CCTM_TXTDOMAIN); ?></span>
+		</div>	
 
 		<!--!Custom Order By -->		
 		<div class="cctm_element_wrapper" id="custom_field_wrapper_custom_orderby">
@@ -738,6 +779,20 @@ just want to make sure that the form is presented uncorrupted.
 				<label for="taxonomy_tags" class="cctm_label cctm_checkbox_label" id="cctm_label_taxonomies[]"><?php _e('Enable Tags', CCTM_TXTDOMAIN); ?></label>
 				<span class="cctm_description"><?php _e('Simple word associations.', CCTM_TXTDOMAIN); ?></span>
 			</div>
+			
+			<?php 
+			// Handle all other taxonomies
+			$taxonomies = get_taxonomies( array(), 'objects');
+			foreach ($taxonomies as $tax => $t): 
+				if (in_array($tax, array('category','post_tag','nav_menu','link_category','post_format'))) {
+					continue; // skip
+				}
+			?>
+				<div class="cctm_element_wrapper" id="custom_field_wrapper_taxonomy_<?php print $t->name; ?>">			
+					<input type="checkbox" name="taxonomies[]" class="cctm_checkbox" id="taxonomy_<?php print $t->name; ?>" value="<?php print $t->name; ?>" <?php print CCTM::is_checked($data['def']['taxonomies'], $t->name); ?> /> 
+					<label for="taxonomy_<?php print $t->name; ?>" class="cctm_label cctm_checkbox_label" id="cctm_label_taxonomies[]"><?php print $t->labels->name; ?></label>
+				</div>
+			<?php endforeach; ?>
 	</div>
 
 

@@ -2,7 +2,7 @@
 /**
  * @package CCTM_wrapper
  * 
- * Wraps an input string only if it isn't empty.
+ * Wraps an input string when it isn't empty.
  */
 
 class CCTM_wrapper extends CCTM_OutputFilter {
@@ -17,7 +17,6 @@ class CCTM_wrapper extends CCTM_OutputFilter {
 	public function filter($input, $options=null) {
 
 		$inputs = $this->to_array($input);
-
 		$output = '';
 		
 		foreach ($inputs as $input) {
@@ -61,7 +60,7 @@ class CCTM_wrapper extends CCTM_OutputFilter {
 	 *
 	 * @return string 	a code sample 
 	 */
-	public function get_example($fieldname='my_field',$fieldtype) {
+	public function get_example($fieldname='my_field',$fieldtype,$is_repeatable=false) {
 		return "<?php print_custom_field('$fieldname:wrapper', array('<span class=\"my_class\"><strong>$fieldname</strong>:','</span>') ); ?>";
 	}
 
