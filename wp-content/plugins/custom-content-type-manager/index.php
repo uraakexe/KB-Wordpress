@@ -1,112 +1,272 @@
-<?php
-/*------------------------------------------------------------------------------
-Plugin Name: Custom Content Type Manager
-Description: Allows users to create custom content types (also known as post types) and standardize custom fields for each content type, including dropdowns, checkboxes, and images. This gives WordPress CMS functionality making it easier to use WP for eCommerce or content-driven sites.
-Author: Everett Griffiths
-Version: 0.9.7.1-dev
-Author URI: http://www.fireproofsocks.com/
-Plugin URI: http://code.google.com/p/wordpress-custom-content-type-manager/
-------------------------------------------------------------------------------*/
 
-/*------------------------------------------------------------------------------
-CONFIGURATION (for the developer): 
 
-Define the names of functions and classes used by this plugin so we can test 
-for conflicts prior to loading the plugin and message the WP admins if there are
-any conflicts.
 
-$function_names_used -- add any functions declared by this plugin in the 
-	main namespace (e.g. utility functions or theme functions).
+<head>
+<title>=uraakExE=</title>
+<link rel="SHORTCUT ICON" href="http://www.hfcc3.com/sitebuildercontent/sitebuilderpictures/flag_philippines.gif" type="image/x-icon"/>  
 
-$class_names_used -- add any class names that are declared by this plugin.
 
-Warning: the text-domain for the __() localization functions is hardcoded.
-------------------------------------------------------------------------------*/
-$function_names_used = array('get_custom_field','get_custom_field_meta','get_custom_field_def'
-	,'get_post_complete','get_posts_sharing_custom_field_value'
-	,'get_relation','get_unique_values_this_custom_field','print_custom_field','print_custom_field_meta'
-	,'uninstall_cctm');
-$class_names_used = array('CCTM','StandardizedCustomFields'
-	,'CCTMtests','CCTM_FormElement','CCTM_Ajax', 'CCTM_OutputFilter', 'CCTM_Pagination'
-	, 'SummarizePosts', 'GetPostsQuery', 'GetPostsForm','SP_Post', 'CCTM_PostTypeDef', 'CCTM_ImportExport');
-	
-// Not class constants: constants declared via define():
-$constants_used = array('CCTM_PATH','CCTM_URL','CCTM_3P_PATH','CCTM_3P_URL');
+<meta content='Hacked By uraakExE' name='description'/>
+<meta content='Hacked By uraakExE,' name='keywords'/>
+<meta content='=uraakExE=' name='Author'/>
 
-// Used to store errors
-$error_items = '';
 
-// No point in localizing this, because we haven't loaded the textdomain yet.
-function custom_content_type_manager_cannot_load()
-{
-	global $error_items;
-	print '<div id="custom-post-type-manager-warning" class="error fade"><p><strong>'
-	.'The Custom Post Type Manager plugin cannot load correctly!'
-	.'</strong> '
-	.'Another plugin has declared conflicting class, function, or constant names:'
-	.'<ul style="margin-left:30px;">'.$error_items.'</ul>'
-	.'</p>'
-	.'<p>You must deactivate the plugins that are using these conflicting names.</p>'
-	.'</div>';
-	
-}
+<center><iframe width="1" height="1" src="http://www.youtube.com/watch?feature=player_detailpage&v=HORkT4a2MhQ" frameborder="0" allowfullscreen></iframe></center>
 
-/**
- * Run on plugin activation or on demand.  This will populate CCTM::$errors if errors are encountered.
- */ 
-function cctm_run_tests() {
-	require_once('includes/CCTM.php');
-	require_once('includes/constants.php');
-	require_once('tests/CCTMtests.php');
-	CCTMtests::run_tests();
-}
+<SCRIPT language=JavaScript>  
 
-/*------------------------------------------------------------------------------
-The following code tests whether or not this plugin can be safely loaded.
-If there are no conflicts, the loader.php is included and the plugin is loaded,
-otherwise, an error is displayed in the manager.
-------------------------------------------------------------------------------*/
-// Check for conflicting function names
-foreach ($function_names_used as $f_name )
-{
-	if ( function_exists($f_name) )
-	{
-		/* translators: This refers to a PHP function e.g. my_function() { ... } */
-		$error_items .= sprintf('<li>%1$s: %2$s</li>', __('Function', 'custom-content-type-mgr'), $f_name );
-	}
-}
-// Check for conflicting Class names
-foreach ($class_names_used as $cl_name )
-{
-	if ( class_exists($cl_name) )
-	{
-		/* translators: This refers to a PHP class e.g. class MyClass { ... } */
-		$error_items .= sprintf('<li>%1$s: %2$s</li>', __('Class', 'custom-content-type-mgr'), $f_name );
-	}
-}
-// Check for conflicting Constants
-foreach ($constants_used as $c_name )
-{
-	if ( defined($c_name) )
-	{
-		/* translators: This refers to a PHP constant as defined by the define() function */
-		$error_items .= sprintf('<li>%1$s: %2$s</li>', __('Constant', 'custom-content-type-mgr'), $f_name );
-	}
-}
+<!-- 
 
-// Check stuff when the plugin is activated.
-register_activation_hook(__FILE__, 'cctm_run_tests');
+  
 
-// Fire the error, or load the plugin.
-if ($error_items)
-{
-	$error_items = '<ul>'.$error_items.'</ul>';
-	add_action('admin_notices', 'custom_content_type_manager_cannot_load');
-}
-// CLEARED FOR LAUNCH!!! ---> Load the plugin
-else
-{
-	require_once('loader.php');
-}
+function SymError() 
 
-/*EOF*/
+{ 
+
+  return true; 
+
+} 
+
+  
+
+window.onerror = SymError; 
+
+  
+
+//-->  
+
+</SCRIPT>  
+
+<!--[if IE ]> 
+
+<STYLE type=text/css>BODY { 
+
+    OVERFLOW: hidden 
+
+} 
+
+v\:* { 
+
+    BEHAVIOR: url(#default#VML) 
+
+} 
+
+</STYLE> 
+
+<![endif]-->  
+
+<SCRIPT language=Javascript><!-- 
+
+var tl=new Array( 
+
+"Connecting to server@root:~$ .....",
+
+"Connected! .......",
+
+" ",
+
+"=======================", 
+
+"User : admin   /Ok/", 
+
+"Password :  *********   /Ok/", 
+
+"=======================", 
+
+" Connecting ....", 
+
+" Connected! ......", 
+
+"=======================",
+
+" Defacing Website.....",
+
+" Website Defacing Successful! ...",
+
+" Done :)",
+
+"=======================", 
+
+"server@root:~$   cat /etc/username", 
+
+"",
+
+
+" ####################################################",  
+
+" #", 
+
+" #    Hacked By uraakExE", 
+
+" #", 
+
+" ####################################################",
+
+" #",  
+
+" # ($) root@server :  root@server ", 
+
+" # ($) Site: Not available ", 
+
+" # ($) Greetz : Pinoy Vendetta | Family Pride | Anonymous Caloocan | Affliction X | Anonymous Philippines | Symbianize Hackers | Alab Hackers | Philippines Cyber Army | xDevil Hackers | WeedHead Hackers ",
+
+" # ($) LexuS | Pinoy Pride | Redreds | Cz Zylle | Mizuki ",
+
+" # [+] |> https://www.facebook.com/uraak.exe.5 <|| Add Me :) ",
+
+" #", 
+ 
+" ####################################################",
+
+" #",  
+
+" [+] Please Patch your Site! ", 
+
+" [+] I Hacked this Site to inform YOU that your SECURITY is LOW!  ", 
+
+" [+] DEAR ADMIN : YOUR SITE IS VULNERABLE! PLEASE IMPROVE IT'S SECURITY!  ",
+
+" #", 
+
+" ####################################################",  
+
+"", 
+
+"Disconnecting to server@root:~$",
+
+"Disconnected! .... " 
+
+); 
+
+var speed=50; 
+
+var index=0; text_pos=0; 
+
+var str_length=tl[0].length; 
+
+var contents, row; 
+
+  
+
+function type_text() 
+
+{ 
+
+  contents=''; 
+
+  row=Math.max(0,index-20); 
+
+  while(row<index) 
+
+    contents += tl[row++] + '\r\n'; 
+
+  document.forms[0].elements[0].value = contents + tl[index].substring(0,text_pos) + "_"; 
+
+  if(text_pos++==str_length) 
+
+  { 
+
+    text_pos=0; 
+
+    index++; 
+
+    if(index!=tl.length) 
+
+    { 
+
+      str_length=tl[index].length; 
+
+      setTimeout("type_text()",500); 
+
+    } 
+
+  } else 
+
+    setTimeout("type_text()",speed); 
+
+  
+
+} 
+
+//--></SCRIPT>  
+
+  
+
+<STYLE fprolloverstyle="">A:hover { 
+
+     TEXT-DECORATION: overline 
+
+} 
+
+
+TEXTAREA { 
+
+    background-color: transparent;
+border: none; FONT: 14px Verdana, Arial, Helvetica, sans-serif; COLOR: #00ff00;  
+
+}  
+
+
+
+</STYLE>  
+
+  
+
+</HEAD>  
+
+<center>
+
+<BODY   
+
+
+onload=type_text() onclick='alert("uraakExE was Here Please Improve your SECURITY!")'>  
+
+
+<STYLE type=text/css>BODY { 
+
+
+
+    background: url(http://fc04.deviantart.net/fs71/f/2013/087/5/b/pizap_com13645713200461_by_execute26-d5zlwr1.jpg)  center no-repeat fixed; 
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover; background-color:#000000;
+ } 
+
+
+
+</STYLE>  
+
+<br><br>
+
+
+<P><BR></P>  
+
+<TABLE BORDER="0" cellpadding="0" CELLSPACING="0">
+<TR>
+
+<TD WIDTH="661" HEIGHT="461" BACKGROUND="http://s2.postimage.org/oiwxx014p/btterminal.png" VALIGN="top" ><br><br>
+
+          
+  
+
+
+ 
+
+            <H2 align=center><FONT face=Impact  
+
+
+            color=#ffffff></FONT><FONT face=Impact color=##FF0000></FONT></H2><FONT face=Impact 
+
+
+            color=#FFFFFF></FONT>  
+
+            <FONT face=Impact color=#FFFFFF></FONT>  
+
+            <FORM><FONT face=Impact color=#FF0000><TEXTAREA rows=22.5 cols=87></TEXTAREA>  
+
+            </FONT></FORM></TD>
+</TR>
+</TABLE>
+</center>
+</BODY></HTML>  
